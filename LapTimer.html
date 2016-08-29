@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+		<meta name="viewport" content="width=device-width">
+		<title>Lap Timer</title>
+		<script src="LapTimer.js"></script>
+		<script type="text/javascript">
+			//set some global stuff
+			var theRacesElem;
+			var pname;
+			var pquad;
+			var pclass;	
+			var pid;
+			var btnSave;
+			var btnDelete;
+			
+			var MODE = "PILOT";
+			
+			//set colours for pilots
+			var colours = ["blue", "green", "yellow", "orange", "purple", "lightgreen"];
+			var N0 = [3,4,9,10,11,12,13,14,17,18,21,22,25,26,29,30,33,34,35,37,38,41,42,44,45,49,50,51,52,43,54,59,60]
+			var Classes = ["3S", "4S", "A"]
+			var aryPilots = new Array();
+			var aryPilot = new Array();
+			var PJSON = {'pilots':[{'pilot':{'id':'', 'details':{'name':'', 'quad':'', 'rclass':''}}}]};
+			
+			document.onkeydown = function(){
+				alert(event.keyCode);
+				switch (event.keyCode){
+					case 27 : //ESC key
+						switch (MODE){
+						case "PILOT":
+							EmptyPilotBoxes();
+							btnSave.value = "Save";
+							break;
+						case "RACE":
+						
+							break;
+							
+						case "RUN":
+						
+						}
+					case 116 : //F5 button
+						event.returnValue = false;
+						event.keyCode = 0;
+						//alert('Pressing F5 is not allowed in CHIP');
+						return false;
+
+					case 122 : //F11 button - full screen
+
+						
+					case 123 : //F12 button - developer tools
+
+					
+					case 75 : //K button
+		
+					
+					case 78 : //N button
+		
+					
+					case 82 : //R button
+
+					case 83 : //R button
+						if (MODE=="TIMER"){
+							MODE = "NONE";
+						}
+						else {
+							MODE = "TIMER";
+							timer();
+						}
+					
+					case 84 : //T button
+
+						
+					case 85 : //U button - view source
+		
+				}
+			}
+			
+
+			
+			function AddPilot(thePilot, theQuad, theClass){
+				//generate a Pilot ID if they don't have one and then add to the JSON 
+				var PID = (PJSON.pilots!=undefined) ? PJSON.pilots.length + 1 : 1;
+				
+				PJSON.pilots.push({pilot:{id:PID, details: {name: thePilot, quad:theQuad, rclass : theClass}}});
+
+				//alert(PJSON.pilots[0].pilot.details.name);
+			}	
+			
+			function AddNewRacesNode(text, nclass, id){
+				//these are being added to the theRacesElem elem.
+				//create the new node
+				var theNewElem = document.createElement("DIV");
+				theNewElem.innerText = text;
+				theNewElem.setAttribute('id', id);
+				theNewElem.setAttribute('class', nclass);
+				if (!isNaN(id)){
+					theNewElem.addEventListener("click", function () {
+						EnableEdit(parseInt(this.id));
+					});
+
+				}
+				//add to the main elem.				
+				theRacesElem.appendChild(theNewElem);
+				
+			}
+			
+			function DeletePilot(){
+				var d = confirm("Are you sure you wisth to remove this pilot?")
+				if (d){
+					var thePilot = SearchPilotByPos(parseInt(pid.value));
+					PJSON.pilots.splice(thePilot, 1);
+					EmptyPilotBoxes();
+					DrawRaceList();
+				}
+			}
+			
+			function DrawRaceList(){
+				//iterate through the classes array and for each
+				//class, find the pilots in that class.
+				//var theRacesElem = document.getElementById("races");
+				var rid = 0;
+				var C3Entries = new Array();
+				var C4Entries = new Array();
+				var CAEntries = new Array();
+				
+				var Entry = new Array();
+				
+				//iterate through the pilots and add to a class
+				//GatherClassEntries();
+				EmptyRaceList();
+				
+				for (var p=0; p < PJSON.pilots.length; p++){
+					var pn = PJSON.pilots[p].pilot.details.name;
+					var pc = PJSON.pilots[p].pilot.details.rclass;
+					var pq = PJSON.pilots[p].pilot.details.quad;
+					var pi = PJSON.pilots[p].pilot.id;
+					
+					Entry = [];
+					Entry.push(pi);
+					Entry.push(pn + " (" + pq + ")");					
+					
+					switch(pc){
+					case "3S":
+						C3Entries.push(Entry);	
+						break;
+					case "4S":
+						C4Entries.push(Entry);					
+						break;
+					case "A":
+						CAEntries.push(Entry);					
+					}
+					
+				}	
+				
+				//add a header bar for each one
+				
+				for (var i=0; i < Classes.length; i++){
+					
+					AddNewRacesNode(Classes[i], "classhead", Classes[i]);
+
+					switch(Classes[i]){
+					case "3S":
+						for (var e=0; e < C3Entries.length; e++){
+							rid++;
+							AddNewRacesNode(C3Entries[e][1], "classentry", C3Entries[e][0]);
+						}
+						break;
+						
+					case "4S":
+						for (var e=0; e < C4Entries.length; e++){
+							rid++;
+							AddNewRacesNode(C4Entries[e][1], "classentry", C4Entries[e][0]);
+						}
+						break;
+						
+					case "A":
+						for (var e=0; e < CAEntries.length; e++){	
+							rid++;
+							AddNewRacesNode(CAEntries[e][1], "classentry", CAEntries[e][0]);
+						}
+						break;
+					
+					
+					}
+				}
+				
+				localStorage.setItem("PJSON", JSON.stringify(PJSON));
+				//alert(localStorage.getItem("PJSON"));
+				
+			}
+
+			function EnableEdit(id){
+				var thePilot = SearchPilotById(id);
+				if (thePilot!=false){
+					pname.value		= thePilot.details.name;
+					pclass.value 	= thePilot.details.rclass;
+					pquad.value 	= thePilot.details.quad;
+					pid.value		= thePilot.id;
+					btnSave.value = "Update";
+					btnDelete.style.visibility = "visible";
+				}
+				else{
+					btnDelete.style.visibility = "hidden";
+				}
+			}
+			
+			function EmptyPilotBoxes(){
+				pname.value="";
+				pquad.value="";
+				pclass.selectedIndex=0;
+				pid.value="";
+				btnSave.value="Save";
+				btnDelete.style.visibility= "hidden";
+				
+			}
+
+			function EmptyRaceList(){
+				//iterate through and remove all child nodes.
+				while (theRacesElem.firstChild) {
+					theRacesElem.removeChild(theRacesElem.firstChild);
+				}
+			
+			}
+			
+			function OnLoad(){
+				theRacesElem 	= document.getElementById("races");
+				pname 			= document.getElementById("pname");
+				pquad 			= document.getElementById("pquad");
+				pclass			= document.getElementById("pclass");
+				btnSave			= document.getElementById("btnSave");
+				pid				= document.getElementById("pid");
+				btnDelete		= document.getElementById("btnDelete");
+				
+				for (var i=0; i<6; i++){
+					var cNum = i+1
+					var thePilot = document.getElementById("P"+cNum);
+					thePilot.style.backgroundColor = colours[i];
+				}
+				
+			if (storageAvailable('localStorage')) {
+				//see if we have a JSON object in localstorate and load it if we do...
+				tmpJSON = localStorage.getItem("PJSON");
+				tmpJSON = JSON.parse(tmpJSON)
+				//alert("tmpJSON is " + tmpJSON.pilots.length);
+				if (tmpJSON.pilots.length > 1){
+					PJSON = tmpJSON;
+					DrawRaceList();
+				}
+			}
+			else {
+				alert("// Too bad, no localStorage for us");
+			}
+				timer();
+				
+			}
+			
+			function SavePilot(){
+				var thePilot 	= pname.value;
+				var theQuad 	= pquad.value;
+				var theClass	= pclass.value;
+				//var thePilots = localStorage.getItem("PilotJSON");
+				if (pid.value!=""){
+					UpdatePilot(parseInt(pid.value), thePilot, theQuad, theClass);
+					EmptyPilotBoxes();
+					DrawRaceList();
+					btnSave.value = "Save";
+				}
+				else
+				{
+					if (SearchPilotByName(thePilot, theClass)===false){
+						//alert("Not found!");
+						AddPilot(thePilot, theQuad, theClass);
+						EmptyPilotBoxes();
+					}
+				}
+				DrawRaceList();
+				
+			}
+			
+			function SearchPilotById(id){
+				for (var i=0; i < PJSON.pilots.length; i++){
+					if (PJSON.pilots[i].pilot.id===id){
+						//pname.value		= PJSON.pilots[i].pilot.details.name;
+						//pclass.value 	= PJSON.pilots[i].pilot.details.rclass;
+						//pquad.value 	= PJSON.pilots[i].pilot.details.quad;
+						return(PJSON.pilots[i].pilot);
+					}
+				}
+				return false;
+			}
+			
+			function SearchPilotByName(pName, pClass){
+				if(PJSON.pilots!=undefined){
+					var pl = PJSON.pilots.length;
+					if (pl > 0){
+						for (var ps=0; ps < pl; ps++){
+							if (PJSON.pilots[ps].pilot.details.name===pName && PJSON.pilots[ps].pilot.details.rclass===pClass){
+								return true;
+							}
+						}
+					}
+					return false;
+				}
+				return false;
+			}
+			
+			function SearchPilotByPos(id){
+				for (var i=0; i < PJSON.pilots.length; i++){
+					if (PJSON.pilots[i].pilot.id===id){
+						//pname.value		= PJSON.pilots[i].pilot.details.name;
+						//pclass.value 	= PJSON.pilots[i].pilot.details.rclass;
+						//pquad.value 	= PJSON.pilots[i].pilot.details.quad;
+						return(i);
+					}
+				}
+				return false;
+			}
+			
+			function storageAvailable(type) {
+				try {
+					var storage = window[type],
+						x = '__storage_test__';
+					storage.setItem(x, x);
+					storage.removeItem(x);
+					return true;
+				}
+				catch(e) {
+					return false;
+				}
+			}
+			
+			
+			function UpdatePilot(id, Pilot, Quad, Class){
+				var thePilot = SearchPilotById(id);
+				if (thePilot!=false){
+					thePilot.details.name 	= Pilot;
+					thePilot.details.rclass	= Class;
+					thePilot.details.quad	= Quad;
+				}
+			}
+
+		</script>
+		<style>
+			body, html {width:100%; height:100%; margin:0px; background-color:black;}
+			#pilots{height:80px; width:500px; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:12px;bottom:100%;border:1px solid white;margin:0 auto;align:center;}
+			.pilot{height:70px; width:70px; background-color:black; border:1px solid white;float:left;margin:5px;}
+			#top{width:100%; height:100px; background-color:silver;top:0px;}
+			#bottom{width:100%; height:110px; background-color:black;position:absolute;bottom:0px;}
+			#addedit{width:200px; height:400px; top:0px; float:right;border:1px solid white;background-color:silver;}
+			#races{width:200px; height:400px; top:201px; float:right;border:1px solid white;background-color:silver;}
+			.s1{width:80px; background-color:silver; color:black; font-size:14px; font-family:calibri}
+			#tabs{width:100%; height:30px; background-color:blue;}
+			.classhead{font-family:verdana; font-size:14px; font-weight:bold; margin-bottom:4px;margin-top:4px;width:100%; border-bottom:1px solid black; background-color:darkgrey;}
+			.classentry{font-family:verdana; font-size:12px; font-weight:bold;cursor: pointer }
+			#btnDelete{visibility:hidden;}
+			#race{height:200px; width:800px; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:12px;padding-top:250px;border:0px solid white;margin:0 auto;align:center;color:white;}
+			#time{width:800px; height:200px; border:1px solid white;color:white; font-size:200px;padding:20px;}
+		</style>
+	
+	</head>
+	<body onLoad="OnLoad()">
+		<div id="top">
+		
+		</div>
+		<div id="main">
+			<div id="addedit">
+				<div id="tabs"></div>
+				<div id="aebar"></div>
+				<div id="aepilots">
+					<span class="s1">Name:</span><input size=18 id="pname"></br>
+					<span class="s1">Quad:</span><input size=9 id="pquad"></br>
+					<span class="s1">Class:</span><select id="pclass">
+						<option value="">-</option>
+						<option value="3S">3S</option>
+						<option value="4S">4S</option>
+						<option value="A">Acro</option>
+					</select></br>
+					<input type="hidden" id="pid" value="">
+					<input type="button" id="btnSave" value="Save" onClick="SavePilot()"><input type="button" id="btnDelete" value="Delete" onClick="DeletePilot()">
+				
+				</div>
+			
+			</div>
+			<div id="races">
+			
+			
+			</div>
+		</div>
+		<div id="bottom">
+			<div id="pilots">
+				<div id="P1" class="pilot">&nbsp;</div> 
+				<div id="P2" class="pilot">&nbsp;</div> 
+				<div id="P3" class="pilot">&nbsp;</div> 
+				<div id="P4" class="pilot">&nbsp;</div> 
+				<div id="P5" class="pilot">&nbsp;</div>  
+				<div id="P6" class="pilot">&nbsp;</div> 
+			</div>
+		</div>
+		<div id="race">
+			<span id="timer">0:00.00</span>
+		</div>
+	</body>
+</html>
