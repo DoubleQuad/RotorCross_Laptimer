@@ -20,11 +20,17 @@ function add() {
     timer();
 }
 function timer() {
-	if (MODE=="TIMER"){
+	if (MODE=="RACE"){
 		t = setTimeout(add, 10);
 	}
 }
 
+function sleep (time) {
+	var now = new Date().getTime();
+    while(new Date().getTime() < now + time){ /* do nothing */ }
+}
+
+// Usage!
 
 
 /* Start button */
