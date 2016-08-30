@@ -20,34 +20,45 @@
 			
 			//set colours for pilots
 			var colours = ["blue", "green", "yellow", "orange", "purple", "lightgreen"];
-			var N0 = [3,4,9,10,11,12,13,14,17,18,21,22,25,26,29,30,33,34,35,37,38,41,42,44,45,49,50,51,52,43,54,59,60]
+			var N0 = [3,4,9,10,11,12,13,14,17,18,21,22,25,26,28,29,30,33,34,35,37,38,41,42,45,46,49,50,51,52,53,54,59,60]
+			var N1 = [3,4,10,11,12,17,18,19,20,27,28,35,36,43,44,50,51,52,53,57,58,59,60,61,62]
+			var N2 = [3,4,10,11,12,13,17,18,21,22,28,29,35,36,42,43,49,50,51,52,53,57,58,59,60,61,62]
+			var N3 = [2,3,4,5,9,10,11,12,13,14,17,18,21,22,28,29,36,37,41,42,45,46,49,50,51,52,53,54,58,59,60,61]
+			
 			var Classes = ["3S", "4S", "A"]
 			var aryPilots = new Array();
 			var aryPilot = new Array();
 			var PJSON = {'pilots':[{'pilot':{'id':'', 'details':{'name':'', 'quad':'', 'rclass':''}}}]};
+			var NUM_LEDS = 64;
+			var OFF = "black";
+			var ON = "yellow";
 			
-			document.onkeydown = function(){
-				alert(event.keyCode);
-				switch (event.keyCode){
+			document.onkeydown = function(e){
+				var key = (window.event) ? e.keyCode : e.which;
+				//alert(key);
+				switch (key){
 					case 27 : //ESC key
 						switch (MODE){
 						case "PILOT":
 							EmptyPilotBoxes();
 							btnSave.value = "Save";
 							break;
-						case "RACE":
-						
+						case "PAUSED":
+							MODE = "NONE";
+							ResetTime();
+							ResetLEDs(OFF);						
 							break;
 							
 						case "RUN":
 						
 						}
 					case 116 : //F5 button
-						event.returnValue = false;
-						event.keyCode = 0;
+						//event.returnValue = false;
+						//event.keyCode = 0;
 						//alert('Pressing F5 is not allowed in CHIP');
-						return false;
-
+						//return false;
+						break;
+						
 					case 122 : //F11 button - full screen
 
 						
@@ -61,16 +72,26 @@
 		
 					
 					case 82 : //R button
+						if (MODE!="RACE" && MODE!="PAUSED"){
+							var Yes = confirm("Click OK to start the race...");
+							if (Yes){
+								Race();
 
-					case 83 : //R button
-						if (MODE=="TIMER"){
-							MODE = "NONE";
+								
+							}
+						}
+						break; 
+						
+					case 83 : //s button
+						if (MODE=="RACE"){
+							MODE = "PAUSED";
 						}
 						else {
-							MODE = "TIMER";
+							MODE = "RACE";
 							timer();
 						}
-					
+						break;
+						
 					case 84 : //T button
 
 						
@@ -117,6 +138,12 @@
 					DrawRaceList();
 				}
 			}
+			
+			function DrawCharacter(Char){
+				for (var i=0; i < Char.length; i++){
+					document.getElementById("s" + Char[i]).style.backgroundColor = ON;
+				}
+			}			
 			
 			function DrawRaceList(){
 				//iterate through the classes array and for each
@@ -241,21 +268,55 @@
 					thePilot.style.backgroundColor = colours[i];
 				}
 				
-			if (storageAvailable('localStorage')) {
-				//see if we have a JSON object in localstorate and load it if we do...
-				tmpJSON = localStorage.getItem("PJSON");
-				tmpJSON = JSON.parse(tmpJSON)
-				//alert("tmpJSON is " + tmpJSON.pilots.length);
-				if (tmpJSON.pilots.length > 1){
-					PJSON = tmpJSON;
-					DrawRaceList();
+				if (storageAvailable('localStorage')) {
+					//see if we have a JSON object in localstorate and load it if we do...
+					tmpJSON = localStorage.getItem("PJSON");
+					tmpJSON = JSON.parse(tmpJSON)
+					//alert("tmpJSON is " + tmpJSON.pilots.length);
+					if (tmpJSON.pilots.length > 1){
+						PJSON = tmpJSON;
+						DrawRaceList();
+					}
+				}
+				else {
+					//alert("// Too bad, no localStorage for us");
+				}
+				
+				//kick off the timer if need be.
+				//timer();
+				
+				ResetLEDs(OFF);
+				//Race();
+				
+			}
+			
+			function Race(){
+				MODE = "RACE";
+				ResetTime();
+				//countdown!
+				//start at 3 with a red background.
+				setTimeout(ResetLEDs("blue"),1000);
+				
+				//now 3 with an red background
+				setTimeout(function(){ResetLEDs("red"); DrawCharacter(N3);}, 2000);
+				
+				//now 3 with an red background
+				setTimeout(function(){ResetLEDs("brown"); DrawCharacter(N2)},3000);
+				
+				//now 3 with an red background
+				setTimeout(function(){ResetLEDs("orange"); DrawCharacter(N1)},4000);
+				
+				setTimeout(function(){ResetLEDs("red"); DrawCharacter(N0); timer();},5000);
+			}
+			
+			function ResetLEDs(colour){
+				for (var i=0; i < NUM_LEDS; i++){
+					document.getElementById("s" + i).style.backgroundColor = colour;
 				}
 			}
-			else {
-				alert("// Too bad, no localStorage for us");
-			}
-				timer();
-				
+			
+			function ResetTime(){
+				document.getElementById("timer").innerHTML = "00:00.00";
 			}
 			
 			function SavePilot(){
@@ -345,8 +406,11 @@
 
 		</script>
 		<style>
+			* {
+				box-sizing: border-box;
+			}
 			body, html {width:100%; height:100%; margin:0px; background-color:black;}
-			#pilots{height:80px; width:500px; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:12px;bottom:100%;border:1px solid white;margin:0 auto;align:center;}
+			#pilots{height:100px; width:504px; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:12px;bottom:100%;border:1px solid white;margin:0 auto;align:center;}
 			.pilot{height:70px; width:70px; background-color:black; border:1px solid white;float:left;margin:5px;}
 			#top{width:100%; height:100px; background-color:silver;top:0px;}
 			#bottom{width:100%; height:110px; background-color:black;position:absolute;bottom:0px;}
@@ -357,8 +421,11 @@
 			.classhead{font-family:verdana; font-size:14px; font-weight:bold; margin-bottom:4px;margin-top:4px;width:100%; border-bottom:1px solid black; background-color:darkgrey;}
 			.classentry{font-family:verdana; font-size:12px; font-weight:bold;cursor: pointer }
 			#btnDelete{visibility:hidden;}
-			#race{height:200px; width:800px; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:12px;padding-top:250px;border:0px solid white;margin:0 auto;align:center;color:white;}
-			#time{width:800px; height:200px; border:1px solid white;color:white; font-size:200px;padding:20px;}
+			#race{height:200px; width:800px; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:12px;padding-top:0px;border:0px solid white;margin:0 auto;align:center;color:white;}
+			#timer{width:800px; height:200px; border:none;color:white; font-size:200px;padding:0px; margin:0 auto;}
+			.off{float: left;width:40px; height:40px; background-color:black; border:1px solid black; padding:8px;}
+			.on{float: left;width:40px; height:40px; background-color:yellow; border:1px solid white; padding:8px;}
+			#grid{border:none;width:330px; height:330px;background-color:black; border:none; margin:0 auto;margin-top:100px; padding:0px;}
 		</style>
 	
 	</head>
@@ -401,7 +468,21 @@
 			</div>
 		</div>
 		<div id="race">
-			<span id="timer">0:00.00</span>
+			<span id="timer">00:00.00</span>
 		</div>
+		<div id="grid">
+			<div class="row" id="row0"><span class="off" id="s0"></span><span class="off" id="s1"></span><span class="off" id="s2"></span><span class="off" id="s3"></span><span class="off" id="s4"></span><span class="off" id="s5"></span><span class="off" id="s6"></span><span class="off" id="s7"></span></div>
+			<div class="row" id="row1"><span class="off" id="s8"></span><span class="off" id="s9"></span><span class="off" id="s10"></span><span class="off" id="s11"></span><span class="off" id="s12"></span><span class="off" id="s13"></span><span class="off" id="s14"></span><span class="off" id="s15"></span></div>
+			<div class="row" id="row2"><span class="off" id="s16"></span><span class="off" id="s17"></span><span class="off" id="s18"></span><span class="off" id="s19"></span><span class="off" id="s20"></span><span class="off" id="s21"></span><span class="off" id="s22"></span><span class="off" id="s23"></span></div>
+			<div class="row" id="row3"><span class="off" id="s24"></span><span class="off" id="s25"></span><span class="off" id="s26"></span><span class="off" id="s27"></span><span class="off" id="s28"></span><span class="off" id="s29"></span><span class="off" id="s30"></span><span class="off" id="s31"></span></div>
+			<div class="row" id="row4"><span class="off" id="s32"></span><span class="off" id="s33"></span><span class="off" id="s34"></span><span class="off" id="s35"></span><span class="off" id="s36"></span><span class="off" id="s37"></span><span class="off" id="s38"></span><span class="off" id="s39"></span></div>
+			<div class="row" id="row5"><span class="off" id="s40"></span><span class="off" id="s41"></span><span class="off" id="s42"></span><span class="off" id="s43"></span><span class="off" id="s44"></span><span class="off" id="s45"></span><span class="off" id="s46"></span><span class="off" id="s47"></span></div>
+			<div class="row" id="row6"><span class="off" id="s48"></span><span class="off" id="s49"></span><span class="off" id="s50"></span><span class="off" id="s51"></span><span class="off" id="s52"></span><span class="off" id="s53"></span><span class="off" id="s54"></span><span class="off" id="s55"></span></div>
+			<div class="row" id="row7"><span class="off" id="s56"></span><span class="off" id="s57"></span><span class="off" id="s58"></span><span class="off" id="s59"></span><span class="off" id="s60"></span><span class="off" id="s61"></span><span class="off" id="s62"></span><span class="off" id="s63"></span></div>
+			
+			
+		
+		</div>
+		
 	</body>
 </html>
