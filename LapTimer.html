@@ -11,6 +11,8 @@
 			var theRacesElem;
 			var pname;
 			var pquad;
+			var pfreq;
+			var ptype;
 			var pclass;	
 			var pid;
 			var btnSave;
@@ -28,10 +30,12 @@
 			var Classes = ["3S", "4S", "A"]
 			var aryPilots = new Array();
 			var aryPilot = new Array();
-			var PJSON = {'pilots':[{'pilot':{'id':'', 'details':{'name':'', 'quad':'', 'rclass':''}}}]};
+			var PJSON = {'pilots':[{'pilot':{'id':'', 'details':{'name':'', 'quad':'', 'rclass':'', 'freq':'', 'vtx':''}}}]};
 			var NUM_LEDS = 64;
 			var OFF = "black";
 			var ON = "yellow";
+			var BeepHigh = new Audio("BeepHigh.wav");
+			var BeepLow = new Audio("BeepLow.wav");
 			
 			document.onkeydown = function(e){
 				var key = (window.event) ? e.keyCode : e.which;
@@ -51,6 +55,28 @@
 							
 						case "RUN":
 						
+						}
+					case 32:	//space bar
+						switch (MODE){
+						
+						case "READY":
+							var Yes = confirm("Click OK to start the race...");
+							if (Yes){
+								Race();
+							}
+							break;
+							
+						case "RACE":
+							MODE = "PAUSED";
+							//ResetTime();
+							//ResetLEDs(OFF);						
+							break;						
+							
+						case "PAUSED":
+							MODE = "RACE";
+							timer();
+							break;
+
 						}
 					case 116 : //F5 button
 						//event.returnValue = false;
@@ -72,7 +98,8 @@
 		
 					
 					case 82 : //R button
-						if (MODE!="RACE" && MODE!="PAUSED"){
+						/*alert(MODE);
+						if (MODE=="RACE" && MODE!="PAUSED"){
 							var Yes = confirm("Click OK to start the race...");
 							if (Yes){
 								Race();
@@ -81,15 +108,15 @@
 							}
 						}
 						break; 
-						
+						*/
 					case 83 : //s button
-						if (MODE=="RACE"){
+						/*if (MODE=="RACE"){
 							MODE = "PAUSED";
 						}
 						else {
 							MODE = "RACE";
 							timer();
-						}
+						}*/
 						break;
 						
 					case 84 : //T button
@@ -102,11 +129,11 @@
 			
 
 			
-			function AddPilot(thePilot, theQuad, theClass){
+			function AddPilot(thePilot, theQuad, theClass, theFreq, theType){
 				//generate a Pilot ID if they don't have one and then add to the JSON 
 				var PID = (PJSON.pilots!=undefined) ? PJSON.pilots.length + 1 : 1;
 				
-				PJSON.pilots.push({pilot:{id:PID, details: {name: thePilot, quad:theQuad, rclass : theClass}}});
+				PJSON.pilots.push({pilot:{id:PID, details: {name: thePilot, quad:theQuad, rclass : theClass, freq:theFreq, vtx:theType}}});
 
 				//alert(PJSON.pilots[0].pilot.details.name);
 			}	
@@ -227,6 +254,8 @@
 					pclass.value 	= thePilot.details.rclass;
 					pquad.value 	= thePilot.details.quad;
 					pid.value		= thePilot.id;
+					pfreq.value 	= thePilot.details.freq;
+					ptype.value		= thePilot.details.vtx;;
 					btnSave.value = "Update";
 					btnDelete.style.visibility = "visible";
 				}
@@ -238,6 +267,8 @@
 			function EmptyPilotBoxes(){
 				pname.value="";
 				pquad.value="";
+				pfreq.value="";
+				ptype.value="";
 				pclass.selectedIndex=0;
 				pid.value="";
 				btnSave.value="Save";
@@ -257,6 +288,8 @@
 				theRacesElem 	= document.getElementById("races");
 				pname 			= document.getElementById("pname");
 				pquad 			= document.getElementById("pquad");
+				pfreq 			= document.getElementById("pfreq");
+				ptype 			= document.getElementById("ptype");
 				pclass			= document.getElementById("pclass");
 				btnSave			= document.getElementById("btnSave");
 				pid				= document.getElementById("pid");
@@ -298,15 +331,15 @@
 				setTimeout(ResetLEDs("blue"),1000);
 				
 				//now 3 with an red background
-				setTimeout(function(){ResetLEDs("red"); DrawCharacter(N3);}, 2000);
+				setTimeout(function(){BeepLow.play(); ResetLEDs("red"); DrawCharacter(N3);}, 2000);
 				
 				//now 3 with an red background
-				setTimeout(function(){ResetLEDs("brown"); DrawCharacter(N2)},3000);
+				setTimeout(function(){BeepLow.play(); ResetLEDs("brown"); DrawCharacter(N2)},3000);
 				
 				//now 3 with an red background
-				setTimeout(function(){ResetLEDs("orange"); DrawCharacter(N1)},4000);
+				setTimeout(function(){BeepLow.play(); ResetLEDs("orange"); DrawCharacter(N1)},4000);
 				
-				setTimeout(function(){ResetLEDs("red"); DrawCharacter(N0); timer();},5000);
+				setTimeout(function(){BeepHigh.play(); ResetLEDs("red"); DrawCharacter(N0); timer();},5000);
 			}
 			
 			function ResetLEDs(colour){
@@ -322,10 +355,12 @@
 			function SavePilot(){
 				var thePilot 	= pname.value;
 				var theQuad 	= pquad.value;
+				var theFreq 	= pfreq.value;
+				var theType 	= ptype.value;
 				var theClass	= pclass.value;
 				//var thePilots = localStorage.getItem("PilotJSON");
 				if (pid.value!=""){
-					UpdatePilot(parseInt(pid.value), thePilot, theQuad, theClass);
+					UpdatePilot(parseInt(pid.value), thePilot, theQuad, theClass, theFreq, theType);
 					EmptyPilotBoxes();
 					DrawRaceList();
 					btnSave.value = "Save";
@@ -381,6 +416,11 @@
 				return false;
 			}
 			
+			function SetMode(mode){
+				//alert(mode);
+				MODE = mode;
+			}
+			
 			function storageAvailable(type) {
 				try {
 					var storage = window[type],
@@ -395,12 +435,14 @@
 			}
 			
 			
-			function UpdatePilot(id, Pilot, Quad, Class){
+			function UpdatePilot(id, Pilot, Quad, Class, Freq, Vtx){
 				var thePilot = SearchPilotById(id);
 				if (thePilot!=false){
 					thePilot.details.name 	= Pilot;
 					thePilot.details.rclass	= Class;
 					thePilot.details.quad	= Quad;
+					thePilot.details.freq	= Freq;
+					thePilot.details.vtx	= Vtx;
 				}
 			}
 
@@ -416,7 +458,7 @@
 			#bottom{width:100%; height:110px; background-color:black;position:absolute;bottom:0px;}
 			#addedit{width:200px; height:400px; top:0px; float:right;border:1px solid white;background-color:silver;}
 			#races{width:200px; height:400px; top:201px; float:right;border:1px solid white;background-color:silver;}
-			.s1{width:80px; background-color:silver; color:black; font-size:14px; font-family:calibri}
+			//.s1{width:80px; background-color:silver; color:black; font-size:14px; font-family:calibri}
 			#tabs{width:100%; height:30px; background-color:blue;}
 			.classhead{font-family:verdana; font-size:14px; font-weight:bold; margin-bottom:4px;margin-top:4px;width:100%; border-bottom:1px solid black; background-color:darkgrey;}
 			.classentry{font-family:verdana; font-size:12px; font-weight:bold;cursor: pointer }
@@ -426,26 +468,39 @@
 			.off{float: left;width:40px; height:40px; background-color:black; border:1px solid black; padding:8px;}
 			.on{float: left;width:40px; height:40px; background-color:yellow; border:1px solid white; padding:8px;}
 			#grid{border:none;width:330px; height:330px;background-color:black; border:none; margin:0 auto;margin-top:100px; padding:0px;}
+			#mode{float:right; font-family:verdana; font-size:16px; border:1px solid black; margin-right:10px;}
+			#mtitle{color:silver; background-color:black;padding:2px;}
+			#mbody{padding:4px;}
 		</style>
 	
 	</head>
 	<body onLoad="OnLoad()">
 		<div id="top">
-		
+			<span id="title">Lap Timer</span><div id="messages"></div>
+			<div id="mode">	
+				<div id="mtitle">Mode:</div>
+				<div id="mbody">
+				<input type=radio checked id="m1" name="ckhMode" value="E" onClick="SetMode('PILOT')"><label for="m1">Edit</label>
+				<input type=radio id="m2" name="ckhMode" value="R" onClick="SetMode('READY')"><label for="m2">Race</label>
+				</div>
+			</div>
 		</div>
 		<div id="main">
 			<div id="addedit">
 				<div id="tabs"></div>
 				<div id="aebar"></div>
-				<div id="aepilots">
-					<span class="s1">Name:</span><input size=18 id="pname"></br>
-					<span class="s1">Quad:</span><input size=9 id="pquad"></br>
-					<span class="s1">Class:</span><select id="pclass">
+				<div id="aepilots")">
+					<span class="s1" style="width:20px">Name:</span><input size=18 id="pname"></br>
+					<span class="s1" style="width:20px">Quad:</span><input size=9 id="pquad"></br>
+					<span class="s1" style="width:20px">Class:</span><select id="pclass">
 						<option value="">-</option>
 						<option value="3S">3S</option>
 						<option value="4S">4S</option>
 						<option value="A">Acro</option>
 					</select></br>
+					<span class="s1">Freq:</span><input size=5 id="pfreq"></br>
+					<span class="s1">Type:</span><input size=3 id="ptype">
+					</br>
 					<input type="hidden" id="pid" value="">
 					<input type="button" id="btnSave" value="Save" onClick="SavePilot()"><input type="button" id="btnDelete" value="Delete" onClick="DeletePilot()">
 				
@@ -483,6 +538,5 @@
 			
 		
 		</div>
-		
 	</body>
 </html>
