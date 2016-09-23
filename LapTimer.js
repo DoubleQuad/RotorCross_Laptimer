@@ -140,6 +140,70 @@ document.onkeydown = function(e){
 	}
 }
 
+//create Pilot and Race classes================================================================================================
+function Pilot(theName){
+	//external property
+	this.PName = theName;
+	this.PID = 0;
+	
+	//internal values
+	this.Quad = [];
+	this.Class = "";
+}	
+
+//methods
+Pilot.prototype = {
+constructor: Pilot,
+	addQuad:function(theQuad, theFreq, theVTx){
+		//var Quad = [];
+		this.Quad.push(theQuad);
+		this.Quad.push(theFreq);
+		this.Quad.push(theVTx);
+		//this.Quads.push(Quad);
+	}
+
+}
+
+function ClassRace(){
+	this.Description = ""; 	//short description e.g. "Round 1"
+	this.Class = "";		//3s/4s/Open
+	this.RType = "";		//Laps / Timed.
+	this.Laps = 0;			//Number of laps for a lap event.
+	this.Time = 0;			//The number of minutes for a timed race.
+	
+	this.Entrants = [];
+	this.Placings = [];
+	this.Laps = [];
+}
+	
+ClassRace.prototype = {
+constructor:Race,
+	addPlacing:function(theID){
+		if (this.Placings.length < 3){
+			this.Placings.push(theID);
+		}
+		else{
+			alert("3 placings already set.");
+		}
+	},
+	addEntrant:function(theID){
+		this.Entrants.push(theID);
+	}
+
+}
+	
+
+
+var Race1 = new ClassRace();
+Race1.Description = "Round 1";
+Race1.addPlacing(1);
+Race1.addPlacing(2);
+Race1.addPlacing(3);
+Race1.addPlacing(4);
+
+
+//================================================================================================================================
+
 function add() {
 	switch(RACETYPE){
 	case "LAPS":
@@ -154,9 +218,15 @@ function add() {
 
 function AddPilot(thePilot, theQuad, theClass, theFreq, theType){
 	//generate a Pilot ID if they don't have one and then add to the JSON 
-	var PID = (PJSON.pilots!=undefined) ? PJSON.pilots.length + 1 : 1;
 	
-	PJSON.pilots.push({pilot:{id:PID, details: {name: thePilot, quad:theQuad, rclass : theClass, freq:theFreq, vtx:theType}}});
+	var P = new Pilot(thePilot);
+	P.PID = aryPilots.length + 1			//(PJSON.pilots!=undefined) ? PJSON.pilots.length + 1 : 1;
+	P.addQuad(theQuad, theFreq, theType);
+	P.Class = theClass;
+	aryPilots.push(P);
+	alert(P.PName);
+	
+	//PJSON.pilots.push({pilot:{id:PID, details: {name: thePilot, quad:theQuad, rclass : theClass, freq:theFreq, vtx:theType}}});
 
 	//alert(PJSON.pilots[0].pilot.details.name);
 }	
@@ -265,11 +335,11 @@ function DrawRaceList(){
 	//GatherClassEntries();
 	EmptyRaceList();
 	
-	for (var p=0; p < PJSON.pilots.length; p++){
-		var pn = PJSON.pilots[p].pilot.details.name;
-		var pc = PJSON.pilots[p].pilot.details.rclass;
-		var pq = PJSON.pilots[p].pilot.details.quad;
-		var pi = PJSON.pilots[p].pilot.id;
+	for (var p=0; p < aryPilots.length; p++){
+		var pn = aryPilots[p].PName		//PJSON.pilots[p].pilot.details.name;
+		var pc = aryPilots[p].Class		//PJSON.pilots[p].pilot.details.rclass;
+		var pq = aryPilots[p].Quad[0]	//PJSON.pilots[p].pilot.details.quad;
+		var pi = aryPilots[p].PID		//PJSON.pilots[p].pilot.id;
 		
 		Entry = [];
 		Entry.push(pi);
@@ -397,12 +467,12 @@ function DrawRacesList(){
 function EnableEdit(id){
 	var thePilot = SearchPilotById(id);
 	if (thePilot!=false){
-		pname.value		= thePilot.details.name;
-		pclass.value 	= thePilot.details.rclass;
-		pquad.value 	= thePilot.details.quad;
-		pid.value		= thePilot.id;
-		pfreq.value 	= thePilot.details.freq;
-		ptype.value		= thePilot.details.vtx;;
+		pname.value		= thePilot.PName;
+		pclass.value 	= thePilot.Class;
+		pquad.value 	= thePilot.Quad[0];
+		pid.value		= thePilot.PID;
+		pfreq.value 	= thePilot.Quad[1];
+		ptype.value		= thePilot.Quad[2];
 		btnSave.value = "Update";
 		btnDelete.style.visibility = "visible";
 	}
@@ -547,9 +617,9 @@ function Race(){
 	setTimeout(function(){BeepLow.play(); ResetLEDs("orange"); DrawCharacter(N1)},4000);
 	
 	//now 0 with an green background
-	setTimeout(function(){BeepHigh.play(); ResetLEDs("green"); DrawCharacter(N0);},5000);
+	setTimeout(function(){BeepHigh.play(); ResetLEDs("green"); DrawCharacter(N0); timer();},5000);
 	
-	setTimeout(function(){ResetLEDs("black"); timer();},5500);
+	setTimeout(function(){ResetLEDs("black");},5500);
 }
 
 function ResetLEDs(colour){
@@ -579,7 +649,7 @@ function SavePilot(){
 	{
 		if (SearchPilotByName(thePilot, theClass)===false){
 			//alert("Not found!");
-			AddPilot(thePilot, theQuad, theClass);
+			AddPilot(thePilot, theQuad, theClass, theFreq, theType);
 			EmptyPilotBoxes();
 		}
 	}
@@ -613,23 +683,26 @@ function SaveRace(){
 }
 
 function SearchPilotById(id){
-	for (var i=0; i < PJSON.pilots.length; i++){
-		if (PJSON.pilots[i].pilot.id===id){
+	//for (var i=0; i < PJSON.pilots.length; i++){
+	for (var i=0; i < aryPilots.length; i++){
+		//if (PJSON.pilots[i].pilot.id===id){
+		if (aryPilots[i].PID===id){
 			//pname.value		= PJSON.pilots[i].pilot.details.name;
 			//pclass.value 	= PJSON.pilots[i].pilot.details.rclass;
 			//pquad.value 	= PJSON.pilots[i].pilot.details.quad;
-			return(PJSON.pilots[i].pilot);
+			return(aryPilots[i]);
 		}
 	}
 	return false;
 }
 
 function SearchPilotByName(pName, pClass){
-	if(PJSON.pilots!=undefined){
-		var pl = PJSON.pilots.length;
+	//if(PJSON.pilots!=undefined){
+	if(aryPilots.length > 0){
+		var pl = aryPilots.length;
 		if (pl > 0){
 			for (var ps=0; ps < pl; ps++){
-				if (PJSON.pilots[ps].pilot.details.name===pName && PJSON.pilots[ps].pilot.details.rclass===pClass){
+				if (aryPilots[ps].PName===pName && aryPilots[ps].Class===pClass){
 					return true;
 				}
 			}
