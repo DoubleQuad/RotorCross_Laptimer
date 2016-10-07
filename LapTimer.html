@@ -17,7 +17,7 @@
 			#top{width:100%; height:100px; background-color:silver;top:0px;}
 			#bottom{width:100%; height:110px; background-color:black;position:absolute;bottom:0px;}
 			#addedit{width:200px; height:400px; top:0px; float:right;border:1px solid white;background-color:silver;}
-			#races{width:200px; height:400px; top:201px; float:right;border:1px solid white;background-color:silver;}
+			#races{width:300px; height:400px; top:201px; float:right;border:1px solid white;background-color:silver;}
 			//.s1{width:80px; background-color:silver; color:black; font-size:14px; font-family:calibri}
 			#tabs{width:100%; height:30px; background-color:blue;}
 			.classhead{font-family:verdana; font-size:14px; font-weight:bold; margin-bottom:4px;margin-top:4px;width:100%; border-bottom:1px solid black; background-color:darkgrey;}
@@ -38,23 +38,136 @@
 				 font-family: Digital;
 				 src: url(digital-counter-7.italic.ttf);
 			}
-			#racecont{visibility:hidden;}
+			#main{top:45px;}
+			#racecont{top:35px;}
+			.editbutton{float:right; width:10px;}
+			button{border-radius: 4px; background-color: #f4511e; border: none; color: #FFFFFF; text-align: center; font-size: 14px; padding: 2px; width: 80px; transition: all 0.5s; cursor:pointer; margin: 5px;}
+			button span {
+			  cursor: pointer;
+			  display: inline-block;
+			  position: relative;
+			  transition: 0.5s;
+			}
+
+			button span:after {
+			  content: '»';
+			  position: absolute;
+			  opacity: 0;
+			  top: 0;
+			  right: -20px;
+			  transition: 0.5s;
+			}
+
+			button:hover span {
+			  padding-right: 25px;
+			}
+
+			button:hover span:after {
+			  opacity: 1;
+			  right: 0;
+			}
+			
+			
+			.overlay {
+				height: 0%;
+				width: 100%;
+				position: fixed;
+				z-index: 1;
+				top: 0;
+				left: 0;
+				background-color: rgb(0,0,0);
+				background-color: rgba(0,0,0, 0.9);
+				overflow-y: hidden;
+				transition: 0.5s;
+			}
+
+			.overlay-content {
+				position: relative;
+				top: 25%;
+				width: 100%;
+				text-align: center;
+				margin-top: 30px;
+			}
+
+			.overlay a {
+				padding: 8px;
+				text-decoration: none;
+				font-size: 36px;
+				color: #818181;
+				display: block;
+				transition: 0.3s;
+			}
+
+			.overlay a:hover, .overlay a:focus {
+				color: #f1f1f1;
+			}
+
+			.overlay .closebtn {
+				position: absolute;
+				top: 20px;
+				right: 45px;
+				font-size: 60px;
+			}
+
+			@media screen and (max-height: 450px) {
+			  .overlay {overflow-y: auto;}
+			  .overlay a {font-size: 20px}
+			  .overlay .closebtn {
+				font-size: 40px;
+				top: 15px;
+				right: 35px;
+			  }
+			}
+			
+			.chip {
+				display: inline-block;
+				padding: 0 25px;
+				height: 40px;
+				font-size: 12px;
+				line-height: 40px;
+				border-radius: 25px;
+				background-color: #f1f1f1;
+				margin-top:1px;
+			}
+
+			.chip img {
+				float: left;
+				margin: 0 10px 0 -25px;
+				height: 40px;
+				width: 40px;
+				border-radius: 50%;
+			}
+
+			.closebtn {
+				padding-left: 10px;
+				color: #888;
+				font-weight: bold;
+				float: right;
+				font-size: 20px;
+				cursor: pointer;
+			}
+
+			.closebtn:hover {
+				color: #000;
+			}
+
 		</style>
 	
 	</head>
 	<body onLoad="OnLoad()">
-		<div id="top">
-			<span id="title">Lap Timer</span><div id="messages"></div>
-			<div id="mode">	
-				<span id="Mode">Ready</span>
-				<div id="mtitle">Mode:</div>
-				<div id="mbody">
-				<input type=radio checked id="m1" name="ckhMode" value="E" onClick="SetMode('PILOT')"><label for="m1">Edit</label>
-				<input type=radio id="m2" name="ckhMode" value="R" onClick="SetMode('READY')"><label for="m2">Race</label>
-				</div>
-			</div>
+		<span style="font-size:30px;cursor:pointer; color:white;" onclick="closeDiv('main');closeDiv('racecont');openDiv('myNav')">&#9776; Menu</span>
+		<div id="myNav" class="overlay">
+		  <a href="javascript:void(0)" class="closebtn" onclick="closeDiv('myNav')">&times;</a>
+		  <div class="overlay-content">
+			<a href="#" onClick="closeDiv('myNav'); closeDiv('racecont'); openDiv('main')">Setup</a>
+			<a href="#" onClick="closeDiv('myNav'); closeDiv('main'); openDiv('racecont');">Race</a>
+			<a href="#">Results</a>
+			<a href="#">About</a>
+		  </div>
 		</div>
-		<div id="main">
+		
+		<!--setup stuff------------------------------------------------------------------------------------------>
+		<div id="main" class="overlay">
 			<div id="addedit">
 				<div id="tabs"></div>
 				<div id="aebar"></div>
@@ -71,7 +184,7 @@
 					<span class="s1">Type:</span><input size=3 id="ptype">
 					</br>
 					<input type="hidden" id="pid" value="">
-					<input type="button" id="btnSave" value="Save" onClick="SavePilot()"><input type="button" id="btnDelete" value="Delete" onClick="DeletePilot()">
+					<button onClick="SavePilot()"><span id="btnSave">Save</span></button><button id="btnDelete" onClick="DeletePilot()"><span >Delete</span></button>
 				
 				</div>
 			
@@ -101,13 +214,15 @@
 					</select>
 				</br>
 				<input type="hidden" id="rid" value="">
-				<input type="button" id="btnSaveR" value="Save" onClick="SaveRace()"><input type="button" id="btnDeleteR" value="Delete" onClick="DeleteRace()">
+				<input type="button" onClick="SaveRace()"><span id="btnSaveR">Save</span></button><input type="button" id="btnDeleteR" value="Delete" onClick="DeleteRace()">
 				</div><div id="racelist"></div>
 			
 			</div>
 		</div>
+		<!--end setup stuff------------------------------------------------------------------------------------->
 		
-		<div id="racecont">
+		<!--racing stuff----------------------------------------------------------------------------------------->
+		<div id="racecont" class="overlay">
 			<div id="bottom">
 				<div id="pilots">
 					<div id="P1" class="pilot">&nbsp;</div> 
@@ -135,5 +250,6 @@
 			
 			</div>
 		</div>
+		<!--end racing stuff------------------------------------------------------------------------------------>
 	</body>
 </html>
