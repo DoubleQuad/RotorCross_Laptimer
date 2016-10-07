@@ -1,5 +1,5 @@
 //set some global stuff
-var theRacesElem;
+var thePilotsElem;
 var theRaceListElem;
 var pname;
 var pquad;
@@ -19,6 +19,9 @@ var Millis;
 var COUNTDOWNTIME=120000, seconds = 0, minutes = 0, hours = 0, t, RACETYPE="TIMED";
 var MODE = "PILOT";
 var Mode;
+var m1;
+var m2;
+
 
 //set colours for pilots
 var colours = ["blue", "green", "yellow", "orange", "purple", "lightgreen"];
@@ -32,7 +35,7 @@ var aryPilots = new Array();
 var aryPilot = new Array();
 var PJSON = {'pilots':[{'pilot':{'id':'', 'details':{'name':'', 'quad':'', 'rclass':'', 'freq':'', 'vtx':''}}}]};
 var RJSON = {'races':[]};
-var aryRaces = new Array();
+//var aryRaces = new Array();
 var aryRace = new Array();
 var NUM_LEDS = 64;
 var OFF = "black";
@@ -45,14 +48,14 @@ document.onkeydown = function(e){
 	//alert(key);
 	switch (key){
 		case 27 : //ESC key
-			switch (MODE){
+			switch (RE.Mode){
 			case "PILOT":
 				EmptyPilotBoxes();
 				btnSave.value = "Save";
 				break;
 			case "PAUSED":
-				MODE = "READY";
-				Mode.innerText = MODE;
+				RE.Mode = "READY";
+				Mode.innerText = RE.Mode;
 				ResetTime();
 				ResetLEDs(OFF);						
 				break;
@@ -64,7 +67,7 @@ document.onkeydown = function(e){
 			
 		case 32:	//space bar
 			
-			switch (MODE){
+			switch (RE.Mode){
 			
 			case "READY":
 				//alert(MODE);
@@ -76,17 +79,17 @@ document.onkeydown = function(e){
 				
 			case "RACE":
 				//alert(MODE);
-				MODE = "PAUSED";
+				RE.Mode = "PAUSED";
 				//ResetTime();
 				//ResetLEDs(OFF);						
-				Mode.innerText = MODE;					
+				Mode.innerText = RE.Mode;					
 				break;						
 				
 			case "PAUSED":
 				//alert(MODE);
-				MODE = "RACE";
+				RE.Mode = "RACE";
 				timer();
-				Mode.innerText = MODE;	
+				Mode.innerText = RE.Mode;	
 				break;
 
 			}
@@ -140,6 +143,55 @@ document.onkeydown = function(e){
 	}
 }
 
+//local storage routines for arrays===========================================================================================
+Storage.prototype.getArray = function(arrayName) {
+  var thisArray = [];
+  var fetchArrayObject = this.getItem(arrayName);
+  if (typeof fetchArrayObject !== 'undefined') {
+    if (fetchArrayObject !== null) { thisArray = JSON.parse(fetchArrayObject); }
+  }
+  return thisArray;
+}
+
+Storage.prototype.pushArrayItem = function(arrayName,arrayItem) {
+  var existingArray = this.getArray(arrayName);
+  existingArray.push(arrayItem);
+  this.setItem(arrayName,JSON.stringify(existingArray));
+}
+
+Storage.prototype.popArrayItem = function(arrayName) {
+  var arrayItem = {};
+  var existingArray = this.getArray(arrayName);
+  if (existingArray.length > 0) {
+    arrayItem = existingArray.pop();
+    this.setItem(arrayName,JSON.stringify(existingArray));
+  }
+  return arrayItem;
+}
+
+Storage.prototype.shiftArrayItem = function(arrayName) {
+  var arrayItem = {};
+  var existingArray = this.getArray(arrayName);
+  if (existingArray.length > 0) {
+    arrayItem = existingArray.shift();
+    this.setItem(arrayName,JSON.stringify(existingArray));
+  }
+  return arrayItem;
+}
+
+Storage.prototype.unshiftArrayItem = function(arrayName,arrayItem) {
+  var existingArray = this.getArray(arrayName);
+  existingArray.unshift(arrayItem);
+  this.setItem(arrayName,JSON.stringify(existingArray));
+}
+
+Storage.prototype.deleteArray = function(arrayName) {
+  this.removeItem(arrayName);
+}
+
+//============================================================================================================================ 
+
+
 //create Pilot and Race classes================================================================================================
 function Pilot(theName){
 	//external property
@@ -147,8 +199,10 @@ function Pilot(theName){
 	this.PID = 0;
 	
 	//internal values
-	this.Quad = [];
-	this.Class = "";
+	this.QuadName 	= "";
+	this.QuadVTx 	= "";
+	this.QuadFreq 	= "";
+	this.Class 		= "";
 }	
 
 //methods
@@ -156,28 +210,34 @@ Pilot.prototype = {
 constructor: Pilot,
 	addQuad:function(theQuad, theFreq, theVTx){
 		//var Quad = [];
-		this.Quad.push(theQuad);
-		this.Quad.push(theFreq);
-		this.Quad.push(theVTx);
+		this.QuadName 	= theQuad;
+		this.QuadVTx 	= theVTx;
+		this.QuadFreq 	= theFreq;
 		//this.Quads.push(Quad);
+	},
+	getQuad:function(){
+		return this.QuadName + ", " + this.QuadVTx + ", " + this.QuadFreq; 
 	}
 
 }
 
+
+//race class
 function ClassRace(){
-	this.Description = ""; 	//short description e.g. "Round 1"
-	this.Class = "";		//3s/4s/Open
-	this.RType = "";		//Laps / Timed.
-	this.Laps = 0;			//Number of laps for a lap event.
-	this.Time = 0;			//The number of minutes for a timed race.
+	this.Description 	= ""; 	//short description e.g. "Round 1"
+	this.Class 			= "";	//3s/4s/Open
+	this.RType 			= "";	//Laps / Timed.
+	this.Laps 			= 0;	//Number of laps for a lap event.
+	this.Time 			= 0;	//The number of minutes for a timed race.
+	this.Raced			= true;
 	
 	this.Entrants = [];
 	this.Placings = [];
-	this.Laps = [];
+	this.LapTimes = [];
 }
 	
 ClassRace.prototype = {
-constructor:Race,
+constructor:ClassRace,
 	addPlacing:function(theID){
 		if (this.Placings.length < 3){
 			this.Placings.push(theID);
@@ -191,18 +251,127 @@ constructor:Race,
 	}
 
 }
+
+
+//race engine class
+function RaceEngine(){
+	//race colours
+	this.UNRACED		= "lightgreen";
+	this.RACED			= "red";
+	this.UNSELECTED		= "";
 	
+	this.StatusElement 	= "";		//the radio buttons that hold the status
+	this.LEDElement		= ""; 		//the element containing the LED segments
+	this.Mode 			= "READY";	//the current race / edit mode.
+	this.SelectedRace	= "";
+	this.Races			= [];
+	this.Pilots			= [];	
+	
+}	
 
+RaceEngine.prototype = {
+constructor:RaceEngine,
+	startRace:function(id){
+		this.Mode = "RACE";
+		this.Race();
+	},
+	selectRace:function(id){
+		//highlight the div that holds the race info.
+		//if the race hasn't been run, enable the racing options.
+		var theRace = RE.searchRacesById(id);
+		var theStatus = theRace.Raced;
+		var theColour = (theStatus==false) ? this.UNRACED : this.RACED ;
+		//find the div that this relates to:
+		var theDIV = document.getElementById("R"+id);
+		
+		//set the div colours
+		if (theDIV){
+			theDIV.style.backgroundColor = theColour;
+			theOldDIV = document.getElementById(this.SelectedRace);
+			if (theOldDIV && theOldDIV!=theDIV){
+				theOldDIV.style.backgroundColor = this.UNSELECTED;
+			}
+			this.SelectedRace = divid;
+		}
+		
+		//enable the racing options.
+		RE.Mode = "READY";
+		m2.checked = true;
+		
+	},
+	addRace:function(race){
+		this.Races.push(race);
+	},removeRace:function(raceid){
+		var theRace = this.searchRaceByPos(parseInt(rid.value));
+		this.Races.splice(theRace, 1);
+	},
+	searchRaceByPos:function(id){
+		for (var i=0; i < RE.Races.length; i++){
+		//for (var i=0; i < PJSON.pilots.length; i++){
+			if (RE.Races[i].RID===id){
+			//if (PJSON.pilots[i].pilot.id===id){
+				//pname.value		= PJSON.pilots[i].pilot.details.name;
+				//pclass.value 	= PJSON.pilots[i].pilot.details.rclass;
+				//pquad.value 	= PJSON.pilots[i].pilot.details.quad;
+				return(i);
+			}
+		}
+		return false;
+	},
+	searchRacesById:function(id){
+		//for (var i=0; i < PJSON.pilots.length; i++){
+		for (var i=0; i < RE.Races.length; i++){
+			//if (PJSON.pilots[i].pilot.id===id){
+			if (RE.Races[i].RID===id){
+				//pname.value		= PJSON.pilots[i].pilot.details.name;
+				//pclass.value 	= PJSON.pilots[i].pilot.details.rclass;
+				//pquad.value 	= PJSON.pilots[i].pilot.details.quad;
+				return(RE.Races[i]);
+			}
+		}
+		return false;
+	},
+	updateRace:function(id, desc, lt, laps){
+	/*this.Description = ""; 	//short description e.g. "Round 1"
+	this.Class = "";		//3s/4s/Open
+	this.RType = "";		//Laps / Timed.
+	this.Laps = 0;			//Number of laps for a lap event.
+	this.Time = 0;	
+	*/
+	var theRace = this.searchRacesById(id);
+	if (theRace!=false){
+		theRace.Description 	= desc;
+		//theRace.Class	= Class;
+		theRace.RType	= lt;
+		theRace.Laps	= laps;
+		theRace.Time	= laps;
+	}
+}
 
-var Race1 = new ClassRace();
+}
+
+var RE = new RaceEngine();
+
+/*var Race1 = new ClassRace();
 Race1.Description = "Round 1";
 Race1.addPlacing(1);
 Race1.addPlacing(2);
 Race1.addPlacing(3);
 Race1.addPlacing(4);
-
+*/
 
 //================================================================================================================================
+
+var PilotTemplate = '<div class="chip"><img src="images/flag.gif" alt="Person" width="38" height="38">{Pilot}<span class=editbutton onclick="EnableEdit({id})">&nbsp;&#9776;</span></div>'
+
+function openDiv(theDiv) {
+    document.getElementById(theDiv).style.height = "100%";
+}
+
+function closeDiv(theDiv) {
+    document.getElementById(theDiv).style.height = "0%";
+}
+
 
 function add() {
 	switch(RACETYPE){
@@ -224,7 +393,7 @@ function AddPilot(thePilot, theQuad, theClass, theFreq, theType){
 	P.addQuad(theQuad, theFreq, theType);
 	P.Class = theClass;
 	aryPilots.push(P);
-	alert(P.PName);
+	//alert(P.PName);
 	
 	//PJSON.pilots.push({pilot:{id:PID, details: {name: thePilot, quad:theQuad, rclass : theClass, freq:theFreq, vtx:theType}}});
 
@@ -232,43 +401,60 @@ function AddPilot(thePilot, theQuad, theClass, theFreq, theType){
 }	
 function AddRace(theDesc, theLap, theLapTime, theClass){
 	//generate a Pilot ID if they don't have one and then add to the JSON 
-	var RID = (RJSON.races!=undefined) ? RJSON.races.length + 1 : 1;
+	var RID = (RE.Races!=undefined) ? RE.Races.length + 1 : 1;
+	var R = new ClassRace();
+	R.RID 			= RID;
+	R.Description 	= theDesc;
+	R.Class 		= theClass;		//3s/4s/Open
+	R.RType 		= "";		//Laps / Timed.
+	R.Laps 			= theLap;			//Number of laps for a lap event.
+	R.Time 			= theLapTime;
+	RE.addRace(R);
 	
-	RJSON.races.push({id:RID, details: {description: theDesc, laps:theLap, rclass : theClass, laptime:theLapTime}});
-	alert(RJSON.races.length)
+	//RJSON.races.push({id:RID, details: {description: theDesc, laps:theLap, rclass : theClass, laptime:theLapTime}});
+	//alert(RJSON.races.length)
 	//alert(PJSON.pilots[0].pilot.details.name);
 }	
 
-function AddNewRacesNode(text, nclass, id){
-	//these are being added to the theRacesElem elem.
+function AddNewPilotNode(text, nclass, id){
+	//these are being added to the thePilotsElem elem.
 	//create the new node
 	var theNewElem = document.createElement("DIV");
+	
 	theNewElem.innerText = text;
 	theNewElem.setAttribute('id', id);
 	theNewElem.setAttribute('class', nclass);
+	if (nclass=="classentry"){
+		var PilotText = PilotTemplate;
+		PilotText = PilotText.replace("{id}", id);
+		PilotText = PilotText.replace("{Pilot}", text);
+		theNewElem.innerHTML = PilotText;
+	}
 	if (!isNaN(id)){
-		theNewElem.addEventListener("click", function () {
+		theNewElem.addEventListener("dblclick", function () {
 			EnableEdit(parseInt(this.id));
 		});
 
 	}
 	//add to the main elem.				
-	theRacesElem.appendChild(theNewElem);
+	thePilotsElem.appendChild(theNewElem);
 	
 }
 
-function AddNewRaceNode(text, nclass, id){
-	//these are being added to the theRacesElem elem.
-	//create the new node
+function AddNewRaceNode(text, nclass, id){					
+	//this adds a race to the list of races to be run.
+	//id = raceid
 	var theNewElem = document.createElement("DIV");
 	theNewElem.innerText = text;
-	theNewElem.setAttribute('id', id);
+	theNewElem.setAttribute('id', "R"+id);
 	theNewElem.setAttribute('class', nclass);
 	if (!isNaN(id)){
-		theNewElem.addEventListener("click", function () {
-			EnableEdit(parseInt(this.id));
+		theNewElem.addEventListener("dblclick", function () {
+			EnableRaceEdit(this.id);
 		});
-
+	theNewElem.addEventListener("click", function () {
+			RE.selectRace(id);
+		});
 	}
 	//add to the main elem.				
 	theRaceListElem.appendChild(theNewElem);
@@ -308,9 +494,24 @@ function DeletePilot(){
 	var d = confirm("Are you sure you wisth to remove this pilot?")
 	if (d){
 		var thePilot = SearchPilotByPos(parseInt(pid.value));
-		PJSON.pilots.splice(thePilot, 1);
+		//PJSON.pilots.splice(thePilot, 1);
+		aryPilots.splice(thePilot, 1);
 		EmptyPilotBoxes();
 		DrawRaceList();
+	}
+}
+
+function DeleteRace(){
+	var d = confirm("Are you sure you wisth to remove this race?")
+	if (d){
+		//var theRace = SearchRaceByPos(parseInt(rid.value));
+		//PJSON.pilots.splice(thePilot, 1);
+		RE.removeRace(rid.value);
+		//aryRaces.splice(theRace, 1);
+		//RE.Races = aryRaces;
+		//alert(RE.Races);
+		EmptyRaceBoxes();
+		DrawRacesList();
 	}
 }
 
@@ -323,7 +524,7 @@ function DrawCharacter(Char){
 function DrawRaceList(){
 	//iterate through the classes array and for each
 	//class, find the pilots in that class.
-	//var theRacesElem = document.getElementById("races");
+	//var thePilotsElem = document.getElementById("races");
 	var rid = 0;
 	var C3Entries = new Array();
 	var C4Entries = new Array();
@@ -338,7 +539,7 @@ function DrawRaceList(){
 	for (var p=0; p < aryPilots.length; p++){
 		var pn = aryPilots[p].PName		//PJSON.pilots[p].pilot.details.name;
 		var pc = aryPilots[p].Class		//PJSON.pilots[p].pilot.details.rclass;
-		var pq = aryPilots[p].Quad[0]	//PJSON.pilots[p].pilot.details.quad;
+		var pq = aryPilots[p].QuadName;//PJSON.pilots[p].pilot.details.quad;
 		var pi = aryPilots[p].PID		//PJSON.pilots[p].pilot.id;
 		
 		Entry = [];
@@ -362,27 +563,27 @@ function DrawRaceList(){
 	
 	for (var i=0; i < Classes.length; i++){
 		
-		AddNewRacesNode(Classes[i], "classhead", Classes[i]);
+		AddNewPilotNode(Classes[i], "classhead", Classes[i]);
 
 		switch(Classes[i]){
 		case "3S":
 			for (var e=0; e < C3Entries.length; e++){
 				rid++;
-				AddNewRacesNode(C3Entries[e][1], "classentry", C3Entries[e][0]);
+				AddNewPilotNode(C3Entries[e][1], "classentry", C3Entries[e][0]);
 			}
 			break;
 			
 		case "4S":
 			for (var e=0; e < C4Entries.length; e++){
 				rid++;
-				AddNewRacesNode(C4Entries[e][1], "classentry", C4Entries[e][0]);
+				AddNewPilotNode(C4Entries[e][1], "classentry", C4Entries[e][0]);
 			}
 			break;
 			
 		case "A":
 			for (var e=0; e < CAEntries.length; e++){	
 				rid++;
-				AddNewRacesNode(CAEntries[e][1], "classentry", CAEntries[e][0]);
+				AddNewPilotNode(CAEntries[e][1], "classentry", CAEntries[e][0]);
 			}
 			break;
 		
@@ -390,7 +591,8 @@ function DrawRaceList(){
 		}
 	}
 	
-	localStorage.setItem("PJSON", JSON.stringify(PJSON));
+	//localStorage.setItem("PJSON", JSON.stringify(PJSON));
+	localStorage.setItem("Pilots", JSON.stringify(aryPilots));
 	//alert(localStorage.getItem("PJSON"));
 	
 }
@@ -398,7 +600,7 @@ function DrawRaceList(){
 function DrawRacesList(){
 	//iterate through the classes array and for each
 	//class, find the pilots in that class.
-	//var theRacesElem = document.getElementById("races");
+	//var thePilotsElem = document.getElementById("races");
 	var rid = 0;
 	var REntries = new Array();
 	//var C4Entries = new Array();
@@ -410,13 +612,13 @@ function DrawRacesList(){
 	//GatherClassEntries();
 	EmptyRacesList();
 	
-	for (var p=0; p < RJSON.races.length; p++){
+	for (var p=0; p <RE.Races.length; p++){
 		//details: {description: theDesc, laps:theLap, rclass : theClass, laptime:theLapTime}
-		var pd = RJSON.races[p].details.description;
-		var pl = RJSON.races[p].details.laps;
-		var pc = RJSON.races[p].details.rclass;
-		var pt = RJSON.races[p].details.laptime;
-		var pi = RJSON.races[p].id;
+		var pd = RE.Races[p].Description;
+		var pl = RE.Races[p].Laps;
+		var pc = RE.Races[p].Class;
+		var pt = "" //aryRaces[p].;
+		var pi = RE.Races[p].RID;
 		
 		REntry = [];
 		REntry.push(pi);
@@ -431,7 +633,7 @@ function DrawRacesList(){
 	
 	//for (var i=0; i < Classes.length; i++){
 		
-		//AddNewRacesNode(Classes[i], "classhead", Classes[i]);
+		//AddNewPilotNode(Classes[i], "classhead", Classes[i]);
 
 		//switch(Classes[i]){
 		//case "3S":
@@ -444,14 +646,14 @@ function DrawRacesList(){
 		/*case "4S":
 			for (var e=0; e < C4Entries.length; e++){
 				rid++;
-				AddNewRacesNode(C4Entries[e][1], "classentry", C4Entries[e][0]);
+				AddNewPilotNode(C4Entries[e][1], "classentry", C4Entries[e][0]);
 			}
 			break;
 			
 		case "A":
 			for (var e=0; e < CAEntries.length; e++){	
 				rid++;
-				AddNewRacesNode(CAEntries[e][1], "classentry", CAEntries[e][0]);
+				AddNewPilotNode(CAEntries[e][1], "classentry", CAEntries[e][0]);
 			}
 			break;
 		
@@ -459,7 +661,7 @@ function DrawRacesList(){
 		//}
 	//}
 	
-	localStorage.setItem("RJSON", JSON.stringify(RJSON));
+	localStorage.setItem("Races", JSON.stringify(aryRaces));
 	//alert(localStorage.getItem("PJSON"));
 	
 }
@@ -469,16 +671,35 @@ function EnableEdit(id){
 	if (thePilot!=false){
 		pname.value		= thePilot.PName;
 		pclass.value 	= thePilot.Class;
-		pquad.value 	= thePilot.Quad[0];
+		pquad.value 	= thePilot.QuadName;
 		pid.value		= thePilot.PID;
-		pfreq.value 	= thePilot.Quad[1];
-		ptype.value		= thePilot.Quad[2];
+		pfreq.value 	= thePilot.QuadFreq;
+		ptype.value		= thePilot.QuadVTx;
 		btnSave.value = "Update";
 		btnDelete.style.visibility = "visible";
 	}
 	else{
 		btnDelete.style.visibility = "hidden";
 	}
+}
+
+function EnableRaceEdit(id){
+	id = parseInt(id.replace("R",""));
+	var theRace = RE.searchRacesById(id);
+	if (theRace!=false){
+		rclass.value	=theRace.Class
+		rdesc.value		=theRace.Description
+		rlap.value		= theRace.Laps;
+		rlt.value		= theRace.Time;
+		//rclass.value	=t;
+		rid.value		= id;
+		btnSaveR.value = "Update";
+		btnDeleteR.style.visibility = "visible";
+	}
+	else{
+		btnDeleteR.style.visibility = "hidden";
+	}
+	alert("Race edit mode enabled");
 }
 
 function EmptyPilotBoxes(){
@@ -513,8 +734,8 @@ function EmptyRaceBoxes(){
 
 function EmptyRaceList(){
 	//iterate through and remove all child nodes.
-	while (theRacesElem.firstChild) {
-		theRacesElem.removeChild(theRacesElem.firstChild);
+	while (thePilotsElem.firstChild) {
+		thePilotsElem.removeChild(thePilotsElem.firstChild);
 	}
 
 }
@@ -548,7 +769,7 @@ function IncrementTime(){
 
 function OnLoad(){
 	//these are document elements.
-	theRacesElem 	= document.getElementById("races");
+	thePilotsElem 	= document.getElementById("races");
 	theRaceListElem	= document.getElementById("racelist");
 	pname 			= document.getElementById("pname");
 	pquad 			= document.getElementById("pquad");
@@ -560,13 +781,16 @@ function OnLoad(){
 	rlap			= document.getElementById("rlap");
 	rlt				= document.getElementById("rlt");
 	btnSave			= document.getElementById("btnSave");
+	btnSaveR		= document.getElementById("btnSaveR");
 	pid				= document.getElementById("pid");
 	rid				= document.getElementById("rid");
 	btnDelete		= document.getElementById("btnDelete");
 	Timer			= document.getElementById("timer");
 	Mode			= document.getElementById("Mode");
+	m1				= document.getElementById("m1");
+	m2				= document.getElementById("m2");
 	
-	MODE			= "EDIT";
+	RE.Mode			= "EDIT";
 	
 	for (var i=0; i<6; i++){
 		var cNum = i+1
@@ -576,11 +800,12 @@ function OnLoad(){
 	
 	if (storageAvailable('localStorage')) {
 		//see if we have a JSON object in localstorate and load it if we do...
-		tmpJSON = localStorage.getItem("PJSON");
+		//tmpJSON = localStorage.getItem("PJSON");
+		tmpJSON = (localStorage.getItem("Pilots")!=undefined) ? localStorage.getItem("Pilots") : new Array();
 		tmpJSON = JSON.parse(tmpJSON)
-		//alert("tmpJSON is " + tmpJSON.pilots.length);
-		if (tmpJSON.pilots.length > 1){
-			PJSON = tmpJSON;
+		
+		if (tmpJSON.length > 1){
+			aryPilots = tmpJSON;
 			DrawRaceList();
 		}
 	}
@@ -596,31 +821,7 @@ function OnLoad(){
 	
 }
 
-function Race(){
-	MODE = "RACE";
-	Mode.innerText = MODE;
-	millis = COUNTDOWNTIME;
-	
-	ResetTime();
-	
-	//countdown!
-	//start at 3 with a red background.
-	setTimeout(ResetLEDs("blue"),1000);
-	
-	//now 3 with an red background
-	setTimeout(function(){BeepLow.play(); ResetLEDs("red"); DrawCharacter(N3);}, 2000);
-	
-	//now 2 with an brown background
-	setTimeout(function(){BeepLow.play(); ResetLEDs("brown"); DrawCharacter(N2)},3000);
-	
-	//now 1 with an orange background
-	setTimeout(function(){BeepLow.play(); ResetLEDs("orange"); DrawCharacter(N1)},4000);
-	
-	//now 0 with an green background
-	setTimeout(function(){BeepHigh.play(); ResetLEDs("green"); DrawCharacter(N0); timer();},5000);
-	
-	setTimeout(function(){ResetLEDs("black");},5500);
-}
+
 
 function ResetLEDs(colour){
 	for (var i=0; i < NUM_LEDS; i++){
@@ -661,11 +862,11 @@ function SaveRace(){
 	var theDesc 	= rdesc.value;
 	var theLap	 	= rlap.value;
 	var theLapTime 	= rlt.value;
-	var theClass	= pclass.value;
+	var theClass	= rclass.value;
 
 	//var thePilots = localStorage.getItem("PilotJSON");
 	if (rid.value!=""){
-		UpdateRace(parseInt(pid.value), thePilot, theQuad, theClass, theFreq, theType);
+		RE.updateRace(parseInt(rid.value), theDesc, theLap, theLapTime);
 		EmptyRaceBoxes();
 		DrawRacesList();
 		btnSaveR.value = "Save";
@@ -696,6 +897,8 @@ function SearchPilotById(id){
 	return false;
 }
 
+
+
 function SearchPilotByName(pName, pClass){
 	//if(PJSON.pilots!=undefined){
 	if(aryPilots.length > 0){
@@ -713,11 +916,11 @@ function SearchPilotByName(pName, pClass){
 }
 
 function SearchRaceByName(pDesc, pClass){
-	if(RJSON.races!=undefined){
-		var pl = RJSON.races.length;
+	if(RE.Races.length > 0){
+		var pl = RE.Races.length;
 		if (pl > 0){
 			for (var ps=0; ps < pl; ps++){
-				if (RJSON.races[ps].details.description===pDesc && RJSON.races[ps].details.rclass===pClass){
+				if (RE.Races[ps].Description===pDesc && RE.Races[ps].Class===pClass){
 					return true;
 				}
 			}
@@ -728,8 +931,10 @@ function SearchRaceByName(pDesc, pClass){
 }
 
 function SearchPilotByPos(id){
-	for (var i=0; i < PJSON.pilots.length; i++){
-		if (PJSON.pilots[i].pilot.id===id){
+	for (var i=0; i < aryPilots.length; i++){
+	//for (var i=0; i < PJSON.pilots.length; i++){
+		if (aryPilots[i].PID===id){
+		//if (PJSON.pilots[i].pilot.id===id){
 			//pname.value		= PJSON.pilots[i].pilot.details.name;
 			//pclass.value 	= PJSON.pilots[i].pilot.details.rclass;
 			//pquad.value 	= PJSON.pilots[i].pilot.details.quad;
@@ -739,9 +944,20 @@ function SearchPilotByPos(id){
 	return false;
 }
 
+
+
 function SetMode(mode){
 	//alert(mode);
-	MODE = mode;
+	RE.Mode = mode;
+	
+	switch(mode){
+	case "READY":
+		document.getElementById("racecont").style.visibility = "visible";
+		break;
+	case "PILOT":
+		document.getElementById("racecont").style.visibility = "hidden";
+		break;
+	}
 }
 
 function storageAvailable(type) {
@@ -758,7 +974,7 @@ function storageAvailable(type) {
 }
 
 function timer() {
-	if (MODE=="RACE"){
+	if (RE.Mode=="RACE"){
 		t = setTimeout(add, 100);
 	}
 }
@@ -771,13 +987,15 @@ function sleep (time) {
 function UpdatePilot(id, Pilot, Quad, Class, Freq, Vtx){
 	var thePilot = SearchPilotById(id);
 	if (thePilot!=false){
-		thePilot.details.name 	= Pilot;
-		thePilot.details.rclass	= Class;
-		thePilot.details.quad	= Quad;
-		thePilot.details.freq	= Freq;
-		thePilot.details.vtx	= Vtx;
+		thePilot.PName 	= Pilot;
+		thePilot.Class	= Class;
+		thePilot.QuadName	= Quad;
+		thePilot.QuadFreq	= Freq;
+		thePilot.QuadVTx	= Vtx;
 	}
-}	
+}
+
+	
 
 
 
