@@ -1,6 +1,7 @@
 //set some global stuff
 var thePilotsElem;
 var theRaceListElem;
+var raceentrants;
 var pname;
 var pquad;
 var pfreq;
@@ -16,12 +17,14 @@ var btnSave;
 var btnDelete;
 var Timer;
 var Millis;
-var COUNTDOWNTIME=120000, seconds = 0, minutes = 0, hours = 0, t, RACETYPE="TIMED";
+var COUNTDOWNTIME=120000, seconds = 0, minutes = 0, hours = 0, t, RACETYPE="LAPS";
 var MODE = "PILOT";
 var Mode;
 var m1;
 var m2;
-
+var DoDebug = false;
+var windowObjectReference = null;
+var theRace;
 
 //set colours for pilots
 var colours = ["blue", "green", "yellow", "orange", "purple", "lightgreen"];
@@ -33,19 +36,24 @@ var N3 = [2,3,4,5,9,10,11,12,13,14,17,18,21,22,28,29,36,37,41,42,45,46,49,50,51,
 var Classes = ["3S", "4S", "A"]
 var aryPilots = new Array();
 var aryPilot = new Array();
-var PJSON = {'pilots':[{'pilot':{'id':'', 'details':{'name':'', 'quad':'', 'rclass':'', 'freq':'', 'vtx':''}}}]};
-var RJSON = {'races':[]};
+var PJSON 		= {'pilots':[{'pilot':{'id':'', 'details':{'name':'', 'quad':'', 'rclass':'', 'freq':'', 'vtx':''}}}]};
+var RJSON 		= {'races':[]};
 //var aryRaces = new Array();
-var aryRace = new Array();
-var NUM_LEDS = 64;
-var OFF = "black";
-var ON = "yellow";
-var BeepHigh = new Audio("BeepHigh.wav");
-var BeepLow = new Audio("BeepLow.wav");
+var aryRace 	= new Array();
+var NUM_LEDS 	= 64;
+var OFF 		= "black";
+var ON 			= "yellow";
+var EMPTY		= 1
+var UNRACED		= 2
+var INPROGRESS	= 3
+var RACED		= 4
+
+var BeepHigh = new Audio("Inc/BeepHigh.wav");
+var BeepLow = new Audio("Inc/BeepLow.wav");
 
 document.onkeydown = function(e){
 	var key = (window.event) ? e.keyCode : e.which;
-	//alert(key);
+	Debug("User pressed key '" + key + "'");
 	switch (key){
 		case 27 : //ESC key
 			switch (RE.Mode){
@@ -65,17 +73,13 @@ document.onkeydown = function(e){
 			}
 			break;
 			
-		case 32:	//space bar
+		case 323:	//space bar
 			
 			switch (RE.Mode){
 			
 			case "READY":
 				//alert(MODE);
-				var Yes = confirm("Click OK to start the race...");
-				if (Yes){
-					Race();
-				}
-				break;
+				RE.startRace();
 				
 			case "RACE":
 				//alert(MODE);
@@ -229,7 +233,7 @@ function ClassRace(){
 	this.RType 			= "";	//Laps / Timed.
 	this.Laps 			= 0;	//Number of laps for a lap event.
 	this.Time 			= 0;	//The number of minutes for a timed race.
-	this.Raced			= true;
+	this.Status			= EMPTY;
 	
 	this.Entrants = [];
 	this.Placings = [];
@@ -248,6 +252,11 @@ constructor:ClassRace,
 	},
 	addEntrant:function(theID){
 		this.Entrants.push(theID);
+	},
+	statusColour:function(status){
+		
+			return "green";
+		
 	}
 
 }
@@ -258,7 +267,9 @@ function RaceEngine(){
 	//race colours
 	this.UNRACED		= "lightgreen";
 	this.RACED			= "red";
+	this.EMPTY			= "yellow";
 	this.UNSELECTED		= "";
+	this.PreviousRace 	= 0;
 	
 	this.StatusElement 	= "";		//the radio buttons that hold the status
 	this.LEDElement		= ""; 		//the element containing the LED segments
@@ -272,26 +283,51 @@ function RaceEngine(){
 RaceEngine.prototype = {
 constructor:RaceEngine,
 	startRace:function(id){
-		this.Mode = "RACE";
-		this.Race();
+		var Yes = confirm("Click OK to start the race...");
+		if (Yes){
+			this.Mode = "RACE";
+			closeDiv('main'); 
+			openDiv('racecont');
+			millis = COUNTDOWNTIME;
+			timer();
+			//this.Race();
+		}
 	},
 	selectRace:function(id){
 		//highlight the div that holds the race info.
 		//if the race hasn't been run, enable the racing options.
-		var theRace = RE.searchRacesById(id);
-		var theStatus = theRace.Raced;
-		var theColour = (theStatus==false) ? this.UNRACED : this.RACED ;
+		var thisRace = RE.searchRacesById(id);
+		Debug("theRace is '" + thisRace + "'");
+		var theStatus = thisRace.Status;
+		Debug("Status is '" + theStatus + "'");
+		var theColour = thisRace.statusColour(theStatus); //(theStatus==false) ? this.UNRACED : this.RACED ;
 		//find the div that this relates to:
 		var theDIV = document.getElementById("R"+id);
 		
 		//set the div colours
+		
+		if (RE.PreviousRace > 0){
+			var oldDIV = document.getElementById("R"+RE.PreviousRace);
+			if (oldDIV){
+				oldDIV.style.backgroundColor = RE.UNSELECTED;
+			}
+		}
+		
+		
 		if (theDIV){
 			theDIV.style.backgroundColor = theColour;
 			theOldDIV = document.getElementById(this.SelectedRace);
 			if (theOldDIV && theOldDIV!=theDIV){
 				theOldDIV.style.backgroundColor = this.UNSELECTED;
 			}
-			this.SelectedRace = divid;
+			RE.SelectedRace = id;
+			RE.PreviousRace = id;
+			
+			//show the start race button if the current selected race hasn't been run yet
+			ShowHide('StartRace', 'hidden')
+			if (theDIV.style.backgroundColor = this.UNRACED){
+				ShowHide('StartRace', 'visible')
+			}
 		}
 		
 		//enable the racing options.
@@ -302,30 +338,28 @@ constructor:RaceEngine,
 	addRace:function(race){
 		this.Races.push(race);
 	},removeRace:function(raceid){
-		var theRace = this.searchRaceByPos(parseInt(rid.value));
-		this.Races.splice(theRace, 1);
+		var thisRace = this.searchRaceByPos(parseInt(rid.value));
+		this.Races.splice(thisRace, 1);
+	},
+	getPilotsForRace:function(id){
+		var aryPilots = [];
+		var thisRace = this.searchRacesById(id);
+		if (thisRace.Entrants.length > 0){
+			aryPilots = thisRace.Entrants;
+		};
+		return aryPilots;
 	},
 	searchRaceByPos:function(id){
 		for (var i=0; i < RE.Races.length; i++){
-		//for (var i=0; i < PJSON.pilots.length; i++){
 			if (RE.Races[i].RID===id){
-			//if (PJSON.pilots[i].pilot.id===id){
-				//pname.value		= PJSON.pilots[i].pilot.details.name;
-				//pclass.value 	= PJSON.pilots[i].pilot.details.rclass;
-				//pquad.value 	= PJSON.pilots[i].pilot.details.quad;
 				return(i);
 			}
 		}
 		return false;
 	},
 	searchRacesById:function(id){
-		//for (var i=0; i < PJSON.pilots.length; i++){
 		for (var i=0; i < RE.Races.length; i++){
-			//if (PJSON.pilots[i].pilot.id===id){
-			if (RE.Races[i].RID===id){
-				//pname.value		= PJSON.pilots[i].pilot.details.name;
-				//pclass.value 	= PJSON.pilots[i].pilot.details.rclass;
-				//pquad.value 	= PJSON.pilots[i].pilot.details.quad;
+			if (RE.Races[i].RID===parseInt(id)){
 				return(RE.Races[i]);
 			}
 		}
@@ -338,16 +372,18 @@ constructor:RaceEngine,
 	this.Laps = 0;			//Number of laps for a lap event.
 	this.Time = 0;	
 	*/
-	var theRace = this.searchRacesById(id);
-	if (theRace!=false){
-		theRace.Description 	= desc;
-		//theRace.Class	= Class;
-		theRace.RType	= lt;
-		theRace.Laps	= laps;
-		theRace.Time	= laps;
+	var thisRace = this.searchRacesById(id);
+	if (thisRace!=false){
+		thisRace.Description 	= desc;
+		//thisRace.Class	= Class;
+		thisRace.RType	= lt;
+		thisRace.Laps	= laps;
+		thisRace.Time	= laps;
 	}
-}
-
+	},
+	Race:function(){
+		alert("Starting Race")
+	}
 }
 
 var RE = new RaceEngine();
@@ -362,7 +398,9 @@ Race1.addPlacing(4);
 
 //================================================================================================================================
 
-var PilotTemplate = '<div class="chip"><img src="images/flag.gif" alt="Person" width="38" height="38">{Pilot}<span class=editbutton onclick="EnableEdit({id})">&nbsp;&#9776;</span></div>'
+var PilotTemplate = '<div class="chip"><img src="images/img_avatar.png" alt="Person" width="38" height="38">{Pilot}<span class=editbutton onclick="EnableEdit({id})">&nbsp;&#9776;</span></div>'
+
+if (DoDebug){OpenDebugWindow();};
 
 function openDiv(theDiv) {
     document.getElementById(theDiv).style.height = "100%";
@@ -372,8 +410,17 @@ function closeDiv(theDiv) {
     document.getElementById(theDiv).style.height = "0%";
 }
 
+function ToggleDIV(theDiv, theState) {
+    document.getElementById(theDiv).style.visibility = theState;
+}
+
+function OpenDIV(theDiv) {
+    document.getElementById(theDiv).style.visibility = "visible";
+}
+
 
 function add() {
+	//Debug("RACETYPE is '" + RACETYPE + "'");
 	switch(RACETYPE){
 	case "LAPS":
 		IncrementTime();
@@ -398,8 +445,14 @@ function AddPilot(thePilot, theQuad, theClass, theFreq, theType){
 	//PJSON.pilots.push({pilot:{id:PID, details: {name: thePilot, quad:theQuad, rclass : theClass, freq:theFreq, vtx:theType}}});
 
 	//alert(PJSON.pilots[0].pilot.details.name);
+	Debug("Added Pilot '" + thePilot + "'");
 }	
 function AddRace(theDesc, theLap, theLapTime, theClass){
+	//=================================================
+	//Called by CreateRacesList()
+	//Adds a new race to the Race Engine's list of races
+	//=================================================
+	
 	//generate a Pilot ID if they don't have one and then add to the JSON 
 	var RID = (RE.Races!=undefined) ? RE.Races.length + 1 : 1;
 	var R = new ClassRace();
@@ -410,13 +463,17 @@ function AddRace(theDesc, theLap, theLapTime, theClass){
 	R.Laps 			= theLap;			//Number of laps for a lap event.
 	R.Time 			= theLapTime;
 	RE.addRace(R);
-	
+	Debug("Added Race '" + theDesc + "'");
 	//RJSON.races.push({id:RID, details: {description: theDesc, laps:theLap, rclass : theClass, laptime:theLapTime}});
 	//alert(RJSON.races.length)
 	//alert(PJSON.pilots[0].pilot.details.name);
 }	
 
 function AddNewPilotNode(text, nclass, id){
+	//==============================================
+	//Called by DrawEntriesList()
+	//==============================================
+	
 	//these are being added to the thePilotsElem elem.
 	//create the new node
 	var theNewElem = document.createElement("DIV");
@@ -438,7 +495,7 @@ function AddNewPilotNode(text, nclass, id){
 	}
 	//add to the main elem.				
 	thePilotsElem.appendChild(theNewElem);
-	
+	Debug("Createad Class entry '" + text + "'");
 }
 
 function AddNewRaceNode(text, nclass, id){					
@@ -464,7 +521,8 @@ function AddNewRaceNode(text, nclass, id){
 function DecrementTime(){
 
 	//var h1 = document.getElementById('timer');
-	
+	//Debug("Current timer value is '"  + Timer.innerHTML + "'");
+	//Debug("millis value is '"  + millis + "'");
 	millis -= 100;
 	//var messagetime = (parseInt(screenrefresh) - parseInt(screenloop))
 	var minutes = (parseInt(millis / 60000) >= 1) ? parseInt(millis/60000) : 0;
@@ -497,7 +555,7 @@ function DeletePilot(){
 		//PJSON.pilots.splice(thePilot, 1);
 		aryPilots.splice(thePilot, 1);
 		EmptyPilotBoxes();
-		DrawRaceList();
+		DrawEntriesList();
 	}
 }
 
@@ -521,7 +579,10 @@ function DrawCharacter(Char){
 	}
 }			
 
-function DrawRaceList(){
+function DrawEntriesList(){
+	//=====================================
+	//Called by OnLoad(), SavePilot() and DeletePilot().
+	//=====================================
 	//iterate through the classes array and for each
 	//class, find the pilots in that class.
 	//var thePilotsElem = document.getElementById("races");
@@ -592,12 +653,16 @@ function DrawRaceList(){
 	}
 	
 	//localStorage.setItem("PJSON", JSON.stringify(PJSON));
-	localStorage.setItem("Pilots", JSON.stringify(aryPilots));
+	//SaveSettings();
 	//alert(localStorage.getItem("PJSON"));
 	
 }
 
 function DrawRacesList(){
+	//=======================================
+	//Called by Onload(), SaveRace() and DeleteRace()
+	//=======================================
+	
 	//iterate through the classes array and for each
 	//class, find the pilots in that class.
 	//var thePilotsElem = document.getElementById("races");
@@ -661,9 +726,14 @@ function DrawRacesList(){
 		//}
 	//}
 	
-	localStorage.setItem("Races", JSON.stringify(aryRaces));
+	//SaveSettings();
 	//alert(localStorage.getItem("PJSON"));
 	
+}
+
+function SaveSettings(){
+	localStorage.setItem("Races", JSON.stringify(RE.Races));
+	localStorage.setItem("Pilots", JSON.stringify(aryPilots));
 }
 
 function EnableEdit(id){
@@ -676,16 +746,19 @@ function EnableEdit(id){
 		pfreq.value 	= thePilot.QuadFreq;
 		ptype.value		= thePilot.QuadVTx;
 		btnSave.value = "Update";
-		btnDelete.style.visibility = "visible";
+		ShowHide('addedit', 'visible');
+		//btnDelete.style.visibility = "visible";
+		btnDelete.disabled=false;
 	}
 	else{
-		btnDelete.style.visibility = "hidden";
+		//btnDelete.style.visibility = "hidden";
+		btnDelete.disabled=true;
 	}
 }
 
 function EnableRaceEdit(id){
 	id = parseInt(id.replace("R",""));
-	var theRace = RE.searchRacesById(id);
+	theRace = RE.searchRacesById(id);
 	if (theRace!=false){
 		rclass.value	=theRace.Class
 		rdesc.value		=theRace.Description
@@ -694,12 +767,73 @@ function EnableRaceEdit(id){
 		//rclass.value	=t;
 		rid.value		= id;
 		btnSaveR.value = "Update";
-		btnDeleteR.style.visibility = "visible";
+		//btnDeleteR.style.visibility = "visible";
+		PopulateRaceEntrants(theRace);
+		ToggleDIV('relist', 'visible');
 	}
 	else{
-		btnDeleteR.style.visibility = "hidden";
+		//btnDeleteR.style.visibility = "hidden";
 	}
-	alert("Race edit mode enabled");
+	//alert("Race edit mode enabled");
+}
+
+function PopulateRaceEntrants(race){
+	//==================================================
+	//Called by EnableRaceEdit()
+	//==================================================
+	//empty the current list 
+	var reedit = document.getElementById("reedit");
+	reedit.innerText = "Entry List - " + race.Class + " " + race.Description;
+	while (raceentrants.firstChild) {
+		raceentrants.removeChild(raceentrants.firstChild);
+	}
+
+
+	//load up the list of pilots for the class
+	//highlight the currently selected pilots.
+	//alert(race);
+	
+	var aryEntrants = RE.getPilotsForRace(race.RID);
+	
+	for (var p=0; p < aryPilots.length; p++){
+		//alert(aryPilots[p].Class);
+		var InClass = aryEntrants.indexOf(aryPilots[p].PID);
+		if (aryPilots[p].Class==race.Class){
+			AddEntrantNode(aryPilots[p], InClass)
+		}
+	}
+	
+	function AddEntrantNode(pilot, inclass){
+		//=============================================
+		//Called from PopulateRaceEntrants()
+		//Pilot 'name':'', 'quad':'', 'rclass':'', 'freq':'', 'vtx':''
+		//=============================================
+		
+		//var parentElement = document.getElementById('raceentrants');
+		var newDiv = document.createElement("div");
+		var newSpan = document.createElement("span");
+		var newChk = document.createElement("input");
+		
+		//set the attributes for the Checkbox
+		newChk.type = "checkbox";
+		newChk.id = "RE" + pilot.PID;
+		newChk.value = pilot.PID;
+		newChk.checked = (inclass > -1) ? true : false;
+		
+		//set the attributes for the span
+		newSpan.innerText = pilot.PName + " : (" + pilot.QuadFreq + ")";
+		
+		//add both to the DIV
+		newDiv.appendChild(newChk);
+		newDiv.appendChild(newSpan);
+		
+		raceentrants.appendChild(newDiv);
+		
+		
+		
+	}
+
+
 }
 
 function EmptyPilotBoxes(){
@@ -710,7 +844,8 @@ function EmptyPilotBoxes(){
 	pclass.selectedIndex=0;
 	pid.value="";
 	btnSave.value="Save";
-	btnDelete.style.visibility= "hidden";
+	//btnDelete.style.visibility= "hidden";
+	btnDelete.disabled=true;
 	
 }
 
@@ -728,7 +863,7 @@ function EmptyRaceBoxes(){
 	rclass.selectedIndex=0;
 	rid.value="";
 	btnSaveR.value="Save";
-	//btnDelete.style.visibility= "hidden";
+	btnDeleteR.style.visibility= "hidden";
 	
 }
 
@@ -789,6 +924,8 @@ function OnLoad(){
 	Mode			= document.getElementById("Mode");
 	m1				= document.getElementById("m1");
 	m2				= document.getElementById("m2");
+	raceentrants	= document.getElementById('raceentrants');
+	btnDelete.disabled=true;
 	
 	RE.Mode			= "EDIT";
 	
@@ -798,16 +935,31 @@ function OnLoad(){
 		thePilot.style.backgroundColor = colours[i];
 	}
 	
+	
 	if (storageAvailable('localStorage')) {
 		//see if we have a JSON object in localstorate and load it if we do...
 		//tmpJSON = localStorage.getItem("PJSON");
+		
+		//get the list of pilots from local storate and build the list.
 		tmpJSON = (localStorage.getItem("Pilots")!=undefined) ? localStorage.getItem("Pilots") : new Array();
 		tmpJSON = JSON.parse(tmpJSON)
-		
-		if (tmpJSON.length > 1){
+
+		if (tmpJSON.length >= 1){;
 			aryPilots = tmpJSON;
-			DrawRaceList();
+			DrawEntriesList();
 		}
+		
+		//now do the same with the races list.
+		tmpJSON = (localStorage.getItem("Races")!=undefined) ? localStorage.getItem("Races") : new Array();
+		tmpJSON = JSON.parse(tmpJSON)
+		Debug("Races JSON is '" + tmpJSON + "'");
+		
+		if (tmpJSON.length >= 1){;
+			RE.Races = tmpJSON;
+			//CreateRacesList();
+			DrawRacesList();
+		}
+		//alert(RE.Races.length);
 	}
 	else {
 		//alert("// Too bad, no localStorage for us");
@@ -821,6 +973,19 @@ function OnLoad(){
 	
 }
 
+function CreateRacesList(){
+	//=======================================
+	//Called by OnLoad()
+	//=======================================
+	alert("# of races:" + RE.Races.length);
+	var xR = 0;
+	//for (var R=0; R < RE.Races.length; R++){
+	while (xR < RE.Races.length){
+		//AddRace(RE.Races[xR].Description, RE.Races[xR].Laps, RE.Races[xR].Time, RE.Races[xR].Class)
+		xR++;
+		alert(xR + ":" + RE.Races.length);
+	}
+}
 
 
 function ResetLEDs(colour){
@@ -843,7 +1008,7 @@ function SavePilot(){
 	if (pid.value!=""){
 		UpdatePilot(parseInt(pid.value), thePilot, theQuad, theClass, theFreq, theType);
 		EmptyPilotBoxes();
-		DrawRaceList();
+		DrawEntriesList();
 		btnSave.value = "Save";
 	}
 	else
@@ -854,7 +1019,8 @@ function SavePilot(){
 			EmptyPilotBoxes();
 		}
 	}
-	DrawRaceList();
+	DrawEntriesList();
+	SaveSettings();
 	
 }
 
@@ -880,7 +1046,24 @@ function SaveRace(){
 		}
 	}
 	DrawRacesList();
-	
+	SaveSettings();
+}
+
+function SaveRE(){
+	var childs = raceentrants.childNodes;
+	var len = childs.length, i = -1;
+	//theRace = RE.searchRacesById(rid.value);
+	//empty the current entrant list
+	theRace.Entrants = [];
+	if(++i < len) do {
+		var fc = childs[i].firstChild;
+		if (fc){
+			if (fc.checked){
+				theRace.Entrants.push(parseInt(fc.value));
+			}
+		}
+	} while(++i < len);
+	SaveSettings();
 }
 
 function SearchPilotById(id){
@@ -960,6 +1143,18 @@ function SetMode(mode){
 	}
 }
 
+function ShowHide(id, state){
+	//alert(state);
+	try{
+		document.getElementById(id).style.visibility = state;
+		Debug("Set '" + id + "' to '" + state + "'");
+	}
+	catch(err)
+	{
+		Debug("Failed setting '" + id + "' to '" + state + "'");
+	}
+}
+
 function storageAvailable(type) {
 	try {
 		var storage = window[type],
@@ -974,6 +1169,7 @@ function storageAvailable(type) {
 }
 
 function timer() {
+	//Debug("Mode is '" + RE.Mode + "'");
 	if (RE.Mode=="RACE"){
 		t = setTimeout(add, 100);
 	}
@@ -1015,3 +1211,38 @@ clear.onclick = function() {
     h1.textContent = "00:00:00";
     seconds = 0; minutes = 0; hours = 0;
 }*/
+
+
+/*debug stuff*/
+function OpenDebugWindow(){
+	if(windowObjectReference == null || windowObjectReference.closed)
+  /* if the pointer to the window object in memory does not exist
+     or if such pointer exists but the window was closed */
+
+  {
+    windowObjectReference = window.open("DebugWindow.asp", "db", "titlebar=no, toolbar=no; resizable=yes");
+    /* then create it. The new window will be created and
+       will be brought on top of any other window. */
+  }
+  else
+  {
+    windowObjectReference.focus();
+    /* else the window reference must exist and the window
+       is not closed; therefore, we can bring it back on top of any other
+       window with the focus() method. There would be no need to re-create
+       the window or to reload the referenced resource. */
+  };
+}
+
+function Debug(text, level){
+	try{
+		if (windowObjectReference && DoDebug){
+			windowObjectReference.DoDebug("add", text, level);
+		}
+	}
+	catch(err){
+		Debug(err, "error")
+	}
+}
+
+/*end debug stuff*/
