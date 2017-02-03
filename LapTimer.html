@@ -1,162 +1,49 @@
-<!DOCTYPE html> 
+<!DOCTYPE html>
 <html>
 	<head>
 		<meta charset="utf-8">
 		<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
 		<meta name="viewport" content="width=device-width">
 		<title>Lap Timer</title>
-		<script src="LapTimer.js"></script>
+		<script src="Inc/LapTimer.js"></script>
+		<link rel="stylesheet" type="text/css" href="Inc/styles.css" />
+		<link rel="stylesheet" type="text/css" href="Inc/LapTimer.css" />
 
-		<style>
-			* {
-				box-sizing: border-box;
-			}
-			body, html {width:100%; height:100%; margin:0px; background-color:black;}
-			#pilots{height:100px; width:504px; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:12px;bottom:100%;border:1px solid white;margin:0 auto;align:center;}
-			.pilot{height:70px; width:70px; background-color:black; border:1px solid white;float:left;margin:5px;}
-			#top{width:100%; height:100px; background-color:silver;top:0px;}
-			#bottom{width:100%; height:110px; background-color:black;position:absolute;bottom:0px;}
-			#addedit{width:200px; height:400px; top:0px; float:right;border:1px solid white;background-color:silver;}
-			#races{width:300px; height:400px; top:201px; float:right;border:1px solid white;background-color:silver;}
-			//.s1{width:80px; background-color:silver; color:black; font-size:14px; font-family:calibri}
-			#tabs{width:100%; height:30px; background-color:blue;}
-			.classhead{font-family:verdana; font-size:14px; font-weight:bold; margin-bottom:4px;margin-top:4px;width:100%; border-bottom:1px solid black; background-color:darkgrey;}
-			.classentry{font-family:verdana; font-size:12px; font-weight:bold;cursor: pointer }
-			#btnDelete{visibility:hidden;}
-			#btnDeleteR{visibility:hidden;}
-			#race{height:200px; width:800px; padding-top:10px;padding-right:6px;padding-bottom:10px;padding-left:12px;padding-top:0px;border:0px solid white;margin:0 auto;align:center;color:white;}
-			#timer{width:800px; height:200px; border:none;color:yellow; font-size:200px;padding:0px; margin:0 auto;font-family: "Digital";}
-			.off{float: left;width:40px; height:40px; background-color:black; border:1px solid black; padding:8px;}
-			.on{float: left;width:40px; height:40px; background-color:yellow; border:1px solid white; padding:8px;}
-			#grid{border:none;width:330px; height:330px;background-color:black; border:none; margin:0 auto;margin-top:100px; padding:0px;}
-			#mode{float:right; font-family:verdana; font-size:16px; border:1px solid black; margin-right:10px;}
-			#mtitle{color:silver; background-color:black;padding:2px;}
-			#mbody{padding:4px;}
-			#raceedit{width:200px; height:400px; top:201px; float:left;border:1px solid white;background-color:silver;}
-			#addraces{width:100%; height:150px; mergin-bottom:4px; border-bottom:1px solid grey;}
-			@font-face {
-				 font-family: Digital;
-				 src: url(digital-counter-7.italic.ttf);
-			}
-			#main{top:45px;}
-			#racecont{top:35px;}
-			.editbutton{float:right; width:10px;}
-			button{border-radius: 4px; background-color: #f4511e; border: none; color: #FFFFFF; text-align: center; font-size: 14px; padding: 2px; width: 80px; transition: all 0.5s; cursor:pointer; margin: 5px;}
-			button span {
-			  cursor: pointer;
-			  display: inline-block;
-			  position: relative;
-			  transition: 0.5s;
-			}
-
-			button span:after {
-			  content: '»';
-			  position: absolute;
-			  opacity: 0;
-			  top: 0;
-			  right: -20px;
-			  transition: 0.5s;
-			}
-
-			button:hover span {
-			  padding-right: 25px;
-			}
-
-			button:hover span:after {
-			  opacity: 1;
-			  right: 0;
-			}
-			
-			
-			.overlay {
-				height: 0%;
-				width: 100%;
-				position: fixed;
-				z-index: 1;
-				top: 0;
-				left: 0;
-				background-color: rgb(0,0,0);
-				background-color: rgba(0,0,0, 0.9);
-				overflow-y: hidden;
-				transition: 0.5s;
-			}
-
-			.overlay-content {
-				position: relative;
-				top: 25%;
-				width: 100%;
-				text-align: center;
-				margin-top: 30px;
-			}
-
-			.overlay a {
-				padding: 8px;
-				text-decoration: none;
-				font-size: 36px;
-				color: #818181;
-				display: block;
-				transition: 0.3s;
-			}
-
-			.overlay a:hover, .overlay a:focus {
-				color: #f1f1f1;
-			}
-
-			.overlay .closebtn {
-				position: absolute;
-				top: 20px;
-				right: 45px;
-				font-size: 60px;
-			}
-
-			@media screen and (max-height: 450px) {
-			  .overlay {overflow-y: auto;}
-			  .overlay a {font-size: 20px}
-			  .overlay .closebtn {
-				font-size: 40px;
-				top: 15px;
-				right: 35px;
-			  }
-			}
-			
-			.chip {
-				display: inline-block;
-				padding: 0 25px;
-				height: 40px;
-				font-size: 12px;
-				line-height: 40px;
-				border-radius: 25px;
-				background-color: #f1f1f1;
-				margin-top:1px;
-			}
-
-			.chip img {
-				float: left;
-				margin: 0 10px 0 -25px;
-				height: 40px;
-				width: 40px;
-				border-radius: 50%;
-			}
-
-			.closebtn {
-				padding-left: 10px;
-				color: #888;
-				font-weight: bold;
-				float: right;
-				font-size: 20px;
-				cursor: pointer;
-			}
-
-			.closebtn:hover {
-				color: #000;
-			}
-
-		</style>
 	
 	</head>
 	<body onLoad="OnLoad()">
-		<span style="font-size:30px;cursor:pointer; color:white;" onclick="closeDiv('main');closeDiv('racecont');openDiv('myNav')">&#9776; Menu</span>
-		<div id="myNav" class="overlay">
+		<!--<span style="font-size:30px;cursor:pointer; color:white;" onclick="closeDiv('main');closeDiv('racecont');openDiv('myNav')">&#9776; Menu</span>-->
+		<div id="mainmenu">
+			<ul id="navigationMenu">
+				<li>
+					<a class="home" href="#" onClick="closeDiv('main'); openDiv('racecont');">
+						<span>Home</span>
+					</a>
+				</li>
+				<li>
+					 <a class="services" href="#" onClick="closeDiv('racecont'); openDiv('main')">
+						<span>Configure</span>
+					 </a>
+				</li>				
+				<li>
+					<a class="contact" href="#">
+						<span>Results</span>
+					</a>
+				</li>
+				<li>
+					<a class="portfolio" href="#">
+						<span>Save / Load</span>
+					</a>
+				</li>
+				<li>
+					<a class="about" href="#">
+						<span>About</span>
+					</a>
+				</li>
+			</ul>
+		</div>
+		
+		<!--<div id="myNav" class="overlay">
 		  <a href="javascript:void(0)" class="closebtn" onclick="closeDiv('myNav')">&times;</a>
 		  <div class="overlay-content">
 			<a href="#" onClick="closeDiv('myNav'); closeDiv('racecont'); openDiv('main')">Setup</a>
@@ -164,17 +51,18 @@
 			<a href="#">Results</a>
 			<a href="#">About</a>
 		  </div>
-		</div>
+		</div>-->
 		
 		<!--setup stuff------------------------------------------------------------------------------------------>
 		<div id="main" class="overlay">
-			<div id="addedit">
-				<div id="tabs"></div>
-				<div id="aebar"></div>
-				<div id="aepilots">
-					<span class="s1" style="width:20px">Name:</span><input size=18 id="pname"></br>
-					<span class="s1" style="width:20px">Quad:</span><input size=9 id="pquad"></br>
-					<span class="s1" style="width:20px">Class:</span><select id="pclass">
+		
+			<!--this is the DIV that contains the pilot editing stuff-->
+			<div id="addedit" class="aediv">
+				<div class="peditheader"><img src="images/img_avatar.png" alt="Person" width="38" height="38">Pilot Edit</div>
+				<div id="aepilots" class="indiv">
+					<span class="s1">Name:</span><input size=18 id="pname"></br>
+					<span class="s1">Quad:</span><input size=9 id="pquad"></br>
+					<span class="s1">Class:</span><select id="pclass">
 						<option value="">-</option>
 						<option value="3S">3S</option>
 						<option value="4S">4S</option>
@@ -184,17 +72,27 @@
 					<span class="s1">Type:</span><input size=3 id="ptype">
 					</br>
 					<input type="hidden" id="pid" value="">
-					<button onClick="SavePilot()"><span id="btnSave">Save</span></button><button id="btnDelete" onClick="DeletePilot()"><span >Delete</span></button>
+					<button onClick="SavePilot()"><span id="btnSave">Save</span></button>
+					<button id="btnDelete" onClick="DeletePilot()"><span >Delete</span></button>
+					<button onClick="ToggleDIV('addedit', 'hidden')"><span>Close</span></button>
 				
 				</div>
 			
 			</div>
-			<div id="races">
 			
-			
+			<!--this is the DIV that contains the list of entries in each class-->
+			<div id="racediv" class="aediv">
+				<div class="peditheader"><img src="images/img_avatar.png" alt="Person" width="38" height="38">Class Entry List<span onClick="EmptyPilotBoxes(); ShowHide('addedit', 'visible')" style="float:right;font-size:26px;margin-top:-10px;padding-top:-10px;">&#x270e;</span></div>
+				<div id="races" class="indiv">
+				
+				
+				</div>
 			</div>
-			<div id="raceedit">
-				<div id="addraces">
+			
+			<!--this is the DIV that contains the round editing stuff-->
+			<div id="raceedit" class="aediv">
+				<div class="peditheader"><img src="images/img_avatar.png" alt="Person" width="38" height="38">Race List Edit</div>
+				<div id="addraces" class="indiv">
 					<span class="s1" style="width:20px">Class:</span><select id="rclass">
 						<option value="">-</option>
 						<option value="3S">3S</option>
@@ -203,7 +101,7 @@
 					</select></br>
 					<span class="s1" style="width:20px">Desc:</span><input size=18 id="rdesc"></br>
 					<span class="s1" style="width:20px"></span><input type=radio id="rlap" name="laptime" value="l" checked>Laps <input type=radio id="rtime" name="laptime" value="t">Timed  </br>
-					<span class="s1" style="width:20px">Laps / Time:</span><select id="rlt">
+					<span class="s1" style="width:20px">Laps&nbsp;/&nbsp;Time:</span><select id="rlt">
 						<option value="">-</option>
 						<option value="1">1</option>
 						<option value="2">2</option>
@@ -212,11 +110,25 @@
 						<option value="5">5</option>
 						<option value="6">6</option>
 					</select>
-				</br>
-				<input type="hidden" id="rid" value="">
-				<input type="button" onClick="SaveRace()"><span id="btnSaveR">Save</span></button><input type="button" id="btnDeleteR" value="Delete" onClick="DeleteRace()">
-				</div><div id="racelist"></div>
-			
+					</br>
+				</div>
+					<input type="hidden" id="rid" value="">
+					<button onClick="SaveRace()"><span id="btnSaveR">Save</span></button><button id="btnDeleteR" value="Delete" onClick="DeleteRace()"><span>Delete</span></button>
+					
+				
+				<div id="racelist"></div>
+				<div id="relist">
+					<div class="peditheader" id="reedit"><img src="images/img_avatar.png" alt="Person" width="38" height="38">Entry List</div>
+					<div id="raceentrants">
+						
+					</div>
+					<div>
+						<button onClick="SaveRE()"><span id="btnSaveRE">Save</span></button>
+						<button onClick="ToggleDIV('relist', 'hidden')"><span>Close</span></button>
+						
+					</div>
+				</div>
+				<button onClick="RE.startRace()" id="StartRace"><span >Start</span></button>
 			</div>
 		</div>
 		<!--end setup stuff------------------------------------------------------------------------------------->
